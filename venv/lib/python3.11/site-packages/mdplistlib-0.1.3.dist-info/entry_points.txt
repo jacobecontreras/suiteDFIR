@@ -1,0 +1,2 @@
+[console_scripts]
+mdplist-cli = mdplist.mdplist_cli:main

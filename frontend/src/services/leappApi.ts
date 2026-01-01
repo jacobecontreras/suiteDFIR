@@ -81,7 +81,8 @@ export function createLeappApi(tool: string) {
                 selectedModules: string[],
                 reportName?: string,
                 password?: string,
-                caseId?: number
+                caseId?: number,
+                timezone?: string
             ): Promise<{ task_id: string }> => {
                 const response = await fetch(`${API_BASE}/process/start`, {
                     method: 'POST',
@@ -94,7 +95,8 @@ export function createLeappApi(tool: string) {
                         report_name: reportName,
                         password: password,
                         case_name: reportName || `Case_${Date.now()}`, // Fallback if needed
-                        case_id: caseId
+                        case_id: caseId,
+                        timezone: timezone
                     }),
                 });
                 return handleApiResponse(response);

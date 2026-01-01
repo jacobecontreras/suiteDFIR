@@ -143,6 +143,9 @@ async def start_processing(request: ProcessRequest, background_tasks: Background
     if request.password:
         cmd.extend(["--itunes_password", request.password])
     
+    if request.timezone:
+        cmd.extend(["--timezone", request.timezone])
+    
     # Generate Task ID
     task_id = str(uuid.uuid4())
     

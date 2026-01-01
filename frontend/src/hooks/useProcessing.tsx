@@ -7,7 +7,7 @@ interface ProcessingContextType {
   progress: { current: number; total: number };
   taskId: string | null;
   processingReportName: string | null;
-  startProcessing: (inputFile: string, outputFolder: string, selectedModules: string[], reportName?: string, password?: string, caseId?: number) => Promise<void>;
+  startProcessing: (inputFile: string, outputFolder: string, selectedModules: string[], reportName?: string, password?: string, caseId?: number, timezone?: string) => Promise<void>;
   stopProcessing: () => Promise<void>;
   clearLogs: () => void;
   clearProcessingReportName: () => void;
@@ -33,7 +33,8 @@ export function ProcessingProvider({ children, tool }: { children: ReactNode; to
     selectedModules: string[],
     reportName?: string,
     password?: string,
-    caseId?: number
+    caseId?: number,
+    timezone?: string
   ) => {
     // Clear logs and progress at the start
     setLogs([]);
@@ -52,7 +53,7 @@ export function ProcessingProvider({ children, tool }: { children: ReactNode; to
         }
       }
 
-      const response = await api.processing.start(inputFile, outputFolder, selectedModules, reportName, password, caseId);
+      const response = await api.processing.start(inputFile, outputFolder, selectedModules, reportName, password, caseId, timezone);
       setTaskId(response.task_id);
 
       // Set up EventSource for streaming logs

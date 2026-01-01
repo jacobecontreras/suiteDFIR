@@ -10,7 +10,7 @@ import ProcessControls from '../../components/ileapp/ProcessControls';
 import LogViewer from '../../components/ileapp/LogViewer';
 import ToolNotInstalled from '../../components/ui/ToolNotInstalled';
 
-import { Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui';
+import { Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui';
 import { useCase } from '@/context/CaseContext';
 import { FileText, FolderOpen, Calendar, Trash2, Loader2, Download } from 'lucide-react';
 
@@ -49,6 +49,13 @@ function LeappContent({ logoPath, tool }: { logoPath: string; tool: string }) {
         variant?: 'destructive' | 'default';
         confirmLabel?: string;
     }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
+
+    // Timezone state
+    const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const timezones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [
+        "UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+        "Europe/London", "Europe/Paris", "Asia/Tokyo", "Australia/Sydney"
+    ];
 
     // aLEAPP logo is 10% smaller than iLEAPP
     const logoHeight = tool === 'aleapp' ? 'h-[57.6px]' : 'h-16';
@@ -176,6 +183,23 @@ function LeappContent({ logoPath, tool }: { logoPath: string; tool: string }) {
                             />
                         </div>
 
+                        {/* Timezone Selection */}
+                        <div className="w-1/3 space-y-2 min-w-0">
+                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1">Timezone</label>
+                            <Select value={timezone} onValueChange={setTimezone} disabled={isProcessing}>
+                                <SelectTrigger className="w-full h-8 text-xs bg-[#1A1A1A] border-white/10">
+                                    <SelectValue placeholder="Select timezone" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {timezones.map((tz) => (
+                                        <SelectItem key={tz} value={tz} className="text-xs">
+                                            {tz}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <FileSelector
                             label="Input"
                             value={inputFile}
@@ -199,6 +223,7 @@ function LeappContent({ logoPath, tool }: { logoPath: string; tool: string }) {
                         outputFolder={outputFolder}
                         reportName={reportName}
                         caseId={selectedCaseId ? parseInt(selectedCaseId) : undefined}
+                        timezone={timezone}
                     />
                 </div>
 

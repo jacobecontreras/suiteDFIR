@@ -79,7 +79,7 @@ class ProcessRequest(BaseModel):
     case_name: str
     case_id: Optional[int] = None
     output_folder: Optional[str] = None
-    timezone_offset: str = "UTC"
+    timezone: Optional[str] = None
     report_name: Optional[str] = None
     password: Optional[str] = None
 

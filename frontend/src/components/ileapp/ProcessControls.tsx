@@ -11,9 +11,10 @@ interface ProcessControlsProps {
   outputFolder: string;
   reportName?: string;
   caseId?: number;
+  timezone?: string;
 }
 
-export default function ProcessControls({ inputFile, outputFolder, reportName, caseId }: ProcessControlsProps) {
+export default function ProcessControls({ inputFile, outputFolder, reportName, caseId, timezone }: ProcessControlsProps) {
   const { selectedModules } = useModules();
   const { isProcessing, startProcessing, stopProcessing, progress, encryptionDetected } = useProcessing();
   const { toast } = useToast();
@@ -57,13 +58,13 @@ export default function ProcessControls({ inputFile, outputFolder, reportName, c
         setShowPasswordDialog(true);
       } else {
         // Not encrypted, proceed normally
-        await startProcessing(inputFile, outputFolder, Array.from(selectedModules), reportName, undefined, caseId);
+        await startProcessing(inputFile, outputFolder, Array.from(selectedModules), reportName, undefined, caseId, timezone);
       }
     } catch (error) {
       console.error("Validation failed:", error);
       // If validation fails (e.g. not a backup folder), just try to process anyway
       // It might be a zip or tar that the validator doesn't handle yet
-      await startProcessing(inputFile, outputFolder, Array.from(selectedModules), reportName, undefined, caseId);
+      await startProcessing(inputFile, outputFolder, Array.from(selectedModules), reportName, undefined, caseId, timezone);
     } finally {
       setIsValidating(false);
     }
@@ -72,7 +73,7 @@ export default function ProcessControls({ inputFile, outputFolder, reportName, c
   const handlePasswordSubmit = async () => {
     setShowPasswordDialog(false);
     try {
-      await startProcessing(inputFile, outputFolder, Array.from(selectedModules), reportName, password, caseId);
+      await startProcessing(inputFile, outputFolder, Array.from(selectedModules), reportName, password, caseId, timezone);
       setPassword(''); // Clear password after sending
     } catch (error) {
       console.error("Processing failed:", error);

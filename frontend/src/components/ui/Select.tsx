@@ -10,14 +10,15 @@ interface SelectContextType {
     onValueChange: (value: string) => void
     open: boolean
     setOpen: (open: boolean) => void
+    disabled?: boolean
 }
 
 const SelectContext = React.createContext<SelectContextType | undefined>(undefined)
 
-const Select = ({ children, value, onValueChange }: { children: React.ReactNode, value: string, onValueChange: (value: string) => void }) => {
+const Select = ({ children, value, onValueChange, disabled }: { children: React.ReactNode, value: string, onValueChange: (value: string) => void, disabled?: boolean }) => {
     const [open, setOpen] = React.useState(false)
     return (
-        <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
+        <SelectContext.Provider value={{ value, onValueChange, open, setOpen, disabled }}>
             <div className="relative">{children}</div>
         </SelectContext.Provider>
     )
@@ -26,15 +27,18 @@ const Select = ({ children, value, onValueChange }: { children: React.ReactNode,
 const SelectTrigger = React.forwardRef<
     HTMLButtonElement,
     React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, children, ...props }, ref) => {
+>(({ className, children, disabled, ...props }, ref) => {
     const context = React.useContext(SelectContext)
     if (!context) throw new Error("SelectTrigger must be used within Select")
+
+    const isDisabled = disabled || context.disabled
 
     return (
         <button
             ref={ref}
             type="button"
-            onClick={() => context.setOpen(!context.open)}
+            onClick={() => !isDisabled && context.setOpen(!context.open)}
+            disabled={isDisabled}
             className={cn(
                 "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
                 className
@@ -84,7 +88,7 @@ const SelectContent = React.forwardRef<
         <div
             ref={ref}
             className={cn(
-                "absolute right-0 z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80",
+                "absolute right-0 z-50 min-w-[8rem] max-h-80 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80",
                 position === "popper" && "translate-y-1",
                 className
             )}
@@ -105,16 +109,18 @@ const SelectItem = React.forwardRef<
     const context = React.useContext(SelectContext)
     if (!context) throw new Error("SelectItem must be used within Select")
 
+    const isDisabled = disabled || context.disabled
+
     return (
         <div
             ref={ref}
             className={cn(
                 "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground",
-                disabled && "pointer-events-none opacity-50",
+                isDisabled && "pointer-events-none opacity-50",
                 className
             )}
             onClick={() => {
-                if (!disabled) {
+                if (!isDisabled) {
                     context.onValueChange(value)
                     context.setOpen(false)
                 }
