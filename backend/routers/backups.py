@@ -67,7 +67,13 @@ async def validate_backup(request: ValidateBackupRequest):
         }
 
 async def run_backup_process(backup_id: int, udid: str, backup_path: str, password: Optional[str] = None):
-    idevicebackup2_cmd = get_binary_path('idevicebackup2')
+    # Cross-platform command resolution
+    if platform.system() == "Windows":
+        idevicebackup2_cmd = get_binary_path('idevicebackup2')
+    else:
+        # On macOS/Linux, rely on system-installed idevicebackup2
+        idevicebackup2_cmd = 'idevicebackup2'
+    
     cmd = [idevicebackup2_cmd, 'backup', backup_path, '-u', udid]
     
     conn = None

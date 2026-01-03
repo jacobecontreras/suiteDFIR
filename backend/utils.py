@@ -89,8 +89,10 @@ async def get_device_details(udid: str):
         # Run ideviceinfo -x (XML) or simple key lookups
         # We'll do key lookups as they are simpler to parse without xmltodict
         
-        ideviceinfo_cmd = get_binary_path("ideviceinfo")
-        
+        if platform.system() == "Windows":
+            ideviceinfo_cmd = get_binary_path("ideviceinfo")
+        else:
+            ideviceinfo_cmd = "ideviceinfo"
         # Get Device Name
         proc_name = await asyncio.create_subprocess_exec(
             ideviceinfo_cmd, "-u", udid, "-k", "DeviceName",
@@ -131,8 +133,10 @@ async def get_connected_devices():
     
     # Check for iOS devices using idevice_id
     try:
-        idevice_id_cmd = get_binary_path("idevice_id")
-        
+        if platform.system() == "Windows":
+            idevice_id_cmd = get_binary_path("idevice_id")
+        else:
+            idevice_id_cmd = "idevice_id"
         # Check if binary exists/is in path (shutil.which is good for this)
         resolved_cmd = shutil.which(idevice_id_cmd)
         if not resolved_cmd:
