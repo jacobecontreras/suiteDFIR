@@ -22,15 +22,23 @@ def get_size_format(b, factor=1024, suffix="B"):
 
 def get_binary_path(binary_name):
     """Resolve path to a binary, preferring bundled versions"""
-    # Check if we are running in a bundled app
-    if getattr(sys, 'frozen', False):
-        # In bundled app, binaries are in the _internal/bin folder
-        # sys._MEIPASS is the temp folder for PyInstaller onefile, but for onedir it's adjacent
-        base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(os.path.abspath(__file__))
-        bundled_path = os.path.join(base_path, 'bin', binary_name)
-        if os.path.exists(bundled_path):
-            return bundled_path
-            
+    # In dev mode, also check for a 'bin' folder in the backend directory
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    local_bin_path = os.path.join(base_path, 'bin', binary_name)
+    
+    # Try exact match
+    if os.path.exists(local_bin_path):
+        logger.debug(f"Found binary exact match: {local_bin_path}")
+        return local_bin_path
+    
+    # Try with .exe on Windows
+    if os.name == 'nt' and not local_bin_path.lower().endswith('.exe'):
+        local_bin_path_exe = local_bin_path + '.exe'
+        if os.path.exists(local_bin_path_exe):
+            logger.debug(f"Found binary with .exe: {local_bin_path_exe}")
+            return local_bin_path_exe
+
+    logger.debug(f"Binary {binary_name} not found in {os.path.join(base_path, 'bin')}, falling back to system PATH")
     # Fallback to system path (just the name)
     return binary_name
 
@@ -114,20 +122,27 @@ async def get_connected_devices():
         idevice_id_cmd = get_binary_path("idevice_id")
         
         # Check if binary exists/is in path (shutil.which is good for this)
-        if not shutil.which(idevice_id_cmd):
-            # Quietly return empty if tool is missing
+        resolved_cmd = shutil.which(idevice_id_cmd)
+        if not resolved_cmd:
+            # Log only once or periodically to avoid spam, but useful for initial diagnosis
+            logger.warning(f"iOS device detection tool '{idevice_id_cmd}' not found in PATH or backend/bin. iOS devices will not be detected.")
             return []
 
+        logger.debug(f"Executing device detection with: {resolved_cmd}")
         proc = await asyncio.create_subprocess_exec(
-            idevice_id_cmd, "-l",
+            resolved_cmd, "-l",
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
-        stdout, _ = await proc.communicate()
+        stdout, stderr = await proc.communicate()
         
-        if proc.returncode == 0:
-            udids = stdout.decode().strip().splitlines()
-            for udid in udids:
+        if proc.returncode != 0:
+            logger.error(f"idevice_id failed with exit code {proc.returncode}")
+            logger.error(f"stderr: {stderr.decode()}")
+            return []
+
+        udids = stdout.decode().strip().splitlines()
+        for udid in udids:
                 if udid:
                     # Get details for each device
                     details = await get_device_details(udid)

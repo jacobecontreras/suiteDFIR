@@ -17,7 +17,6 @@ __pycache__/
 # Build outputs
 backend/build/
 backend/dist/
-backend/bin/
 backend/venv/
 backend/*.spec
 !backend/build.spec

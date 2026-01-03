@@ -7,13 +7,12 @@ import shutil
 import sqlite3
 import subprocess
 import platform
-import sqlite3
 from datetime import datetime
 from typing import List, Optional
 from models import BackupRequest, ValidateBackupRequest
 from database import DB_PATH
 from state import backup_tasks, active_backups
-from utils import broadcast_event, get_connected_devices
+from utils import broadcast_event, get_connected_devices, get_binary_path
 
 logger = logging.getLogger(__name__)
 
@@ -68,12 +67,16 @@ async def validate_backup(request: ValidateBackupRequest):
         }
 
 async def run_backup_process(backup_id: int, udid: str, backup_path: str, password: Optional[str] = None):
-    cmd = ['idevicebackup2', 'backup', backup_path, '-u', udid]
+    idevicebackup2_cmd = get_binary_path('idevicebackup2')
+    cmd = [idevicebackup2_cmd, 'backup', backup_path, '-u', udid]
+    
+    conn = None
+    process = None
 
     try:
         if password:
             # Enable encryption
-            enc_cmd = ['idevicebackup2', 'encryption', 'on', password, '-u', udid]
+            enc_cmd = [idevicebackup2_cmd, 'encryption', 'on', password, '-u', udid]
             enc_proc = await asyncio.create_subprocess_exec(
                 *enc_cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -83,7 +86,7 @@ async def run_backup_process(backup_id: int, udid: str, backup_path: str, passwo
             if enc_proc.returncode != 0:
                 # Failed to enable encryption
                 error_msg = f"Failed to enable encryption: {stderr.decode()}"
-                print(error_msg)
+                logger.error(error_msg)
                 if backup_id in backup_tasks:
                     await backup_tasks[backup_id]["queue"].put(error_msg)
                     backup_tasks[backup_id]["status"] = "failed"
@@ -237,15 +240,26 @@ async def run_backup_process(backup_id: int, udid: str, backup_path: str, passwo
                     print(f"Error deleting backup files: {e}")
 
     except Exception as e:
-        print(f"Backup error: {e}")
-        cursor.execute("UPDATE backups SET status = 'failed' WHERE id = ?", (backup_id,))
-        conn.commit()
+        logger.error(f"Backup error: {e}")
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("UPDATE backups SET status = 'failed' WHERE id = ?", (backup_id,))
+            conn.commit()
+            conn.close()
+        except Exception as db_e:
+            logger.error(f"Failed to update DB after backup error: {db_e}")
+            
         if backup_id in backup_tasks:
             await backup_tasks[backup_id]["queue"].put(f"Backup error: {str(e)}")
             backup_tasks[backup_id]["status"] = "failed"
             
     finally:
-        conn.close()
+        if conn and hasattr(conn, 'close'):
+            try:
+                conn.close()
+            except:
+                pass
         if backup_id in active_backups:
             del active_backups[backup_id]
         # Note: We don't delete from backup_tasks here to allow the stream to finish sending logs
