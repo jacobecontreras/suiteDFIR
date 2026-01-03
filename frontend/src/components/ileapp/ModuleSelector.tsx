@@ -64,17 +64,48 @@ export default function ModuleSelector({ tool, isProcessing }: ModuleSelectorPro
   const { profiles, loadProfile, saveProfile, deleteProfile } = useProfiles(tool);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isSyncingScroll = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, []);
 
   // Restore scroll position
   useEffect(() => {
     if (scrollRef.current && modules.length > 0 && !isLoadingModules) {
-      scrollRef.current.scrollTop = artifactScrollPos;
+      const currentScroll = scrollRef.current.scrollTop;
+      // Only update if the difference is significant
+      if (Math.abs(currentScroll - artifactScrollPos) > 1) {
+        isSyncingScroll.current = true;
+        scrollRef.current.scrollTop = artifactScrollPos;
+        // Reset after a short delay to allow the browser to process the scroll event
+        setTimeout(() => {
+          isSyncingScroll.current = false;
+        }, 50);
+      }
     }
   }, [artifactScrollPos, modules.length, isLoadingModules]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (isSyncingScroll.current) return;
+
     const target = e.currentTarget;
-    updateConfig(tool, { artifactScrollPos: target.scrollTop });
+    const newPos = target.scrollTop;
+
+    // Only update if it changed from the last known state position
+    if (Math.abs(newPos - artifactScrollPos) > 1) {
+      // Debounce the update to context to prevent choppy rendering during scroll
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+
+      scrollTimeoutRef.current = setTimeout(() => {
+        updateConfig(tool, { artifactScrollPos: newPos });
+        scrollTimeoutRef.current = null;
+      }, 150); // 150ms delay is enough to feel snappy but avoid render spam
+    }
   };
 
   const handleLoadProfile = async (profileId: number) => {
@@ -283,84 +314,89 @@ export default function ModuleSelector({ tool, isProcessing }: ModuleSelectorPro
           </div>
         </div>
 
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-3 pt-2 custom-scrollbar"
-        >
-          {Object.entries(modulesByCategory).map(([category, categoryModules]) => (
-            <div key={category} className="mb-2">
-              <div className="text-xs font-medium text-gray-400 mb-1">
-                {category}
-              </div>
-              <div className="space-y-0.5">
-                {categoryModules.map((module) => (
-                  <label
-                    key={module.name}
-                    className="flex items-center space-x-2 px-2 py-0.5 rounded hover:bg-[#262626] cursor-pointer transition-colors"
-                  >
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        checked={selectedModules.has(module.name)}
-                        onChange={() => toggleModule(tool, module.name, !selectedModules.has(module.name))}
-                        disabled={isProcessing}
-                        className="w-3.5 h-3.5 rounded border border-white focus:ring-1 focus:ring-gray-600 appearance-none"
-                        style={{ borderWidth: '0.5px', backgroundColor: selectedModules.has(module.name) ? '#262626' : 'transparent' }}
-                      />
-                      {selectedModules.has(module.name) && (
-                        <svg className="absolute w-2.5 h-2.5 text-white pointer-events-none" style={{ top: '5.5px', left: '2px' }} viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-xs flex-1 text-white">{module.display_name}</span>
-                    {slowModules.has(module.module_name) && (
-                      <span
-                        className="text-[10px] font-medium px-1.5 py-0 rounded border border-white"
-                        style={{ borderWidth: '0.5px', backgroundColor: '#262626', color: 'white' }}
-                      >
-                        Slow
-                      </span>
-                    )}
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+        <div className="relative flex-1 min-h-0">
+          {/* Top/Bottom Fade Mask */}
+          <div className="absolute inset-0 pointer-events-none z-10 scroll-mask" />
 
-      <Dialog open={confirmDeleteProfileId !== null} onOpenChange={(open) => !open && setConfirmDeleteProfileId(null)}>
-        <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333]">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Delete Profile</DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            <p className="text-[11px] text-gray-400 leading-relaxed">
-              Are you sure you want to delete this profile? This cannot be undone.
-            </p>
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="absolute inset-0 p-3 pt-6 pb-6 overflow-y-auto custom-scrollbar smooth-scroll"
+          >
+            {Object.entries(modulesByCategory).map(([category, categoryModules]) => (
+              <div key={category} className="mb-2">
+                <div className="text-xs font-medium text-gray-400 mb-1">
+                  {category}
+                </div>
+                <div className="space-y-0.5">
+                  {categoryModules.map((module) => (
+                    <label
+                      key={module.name}
+                      className="flex items-center space-x-2 px-2 py-0.5 rounded hover:bg-[#262626] cursor-pointer transition-colors"
+                    >
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={selectedModules.has(module.name)}
+                          onChange={() => toggleModule(tool, module.name, !selectedModules.has(module.name))}
+                          disabled={isProcessing}
+                          className="w-3.5 h-3.5 rounded border border-white focus:ring-1 focus:ring-gray-600 appearance-none"
+                          style={{ borderWidth: '0.5px', backgroundColor: selectedModules.has(module.name) ? '#262626' : 'transparent' }}
+                        />
+                        {selectedModules.has(module.name) && (
+                          <svg className="absolute w-2.5 h-2.5 text-white pointer-events-none" style={{ top: '5.5px', left: '2px' }} viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-xs flex-1 text-white">{module.display_name}</span>
+                      {slowModules.has(module.module_name) && (
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0 rounded border border-white"
+                          style={{ borderWidth: '0.5px', backgroundColor: '#262626', color: 'white' }}
+                        >
+                          Slow
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-          <DialogFooter className="mt-2 flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="flex-1 h-8 text-[11px]"
-              onClick={() => setConfirmDeleteProfileId(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="flex-1 h-8 text-[11px] bg-red-900/20 hover:bg-red-900/40 text-white border border-red-900/30"
-              onClick={confirmDelete}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+
+        <Dialog open={confirmDeleteProfileId !== null} onOpenChange={(open) => !open && setConfirmDeleteProfileId(null)}>
+          <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333]">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Delete Profile</DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Are you sure you want to delete this profile? This cannot be undone.
+              </p>
+            </div>
+            <DialogFooter className="mt-2 flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1 h-8 text-[11px]"
+                onClick={() => setConfirmDeleteProfileId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="flex-1 h-8 text-[11px] bg-red-900/20 hover:bg-red-900/40 text-white border border-red-900/30"
+                onClick={confirmDelete}
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

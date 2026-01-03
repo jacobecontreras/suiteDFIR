@@ -326,8 +326,8 @@ ring-offset-2 {
 
 /* Custom Minimal Scrollbar Utility */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -335,19 +335,41 @@ ring-offset-2 {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  transition: background 0.2s;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  background-clip: content-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.45);
+  background-clip: content-box;
+}
+
+/* Force smooth scrolling for list areas */
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+/* Mask for scrollable areas to show continuation */
+.scroll-mask {
+  mask-image: linear-gradient(to bottom, 
+    transparent 0%, 
+    black 40px, 
+    black calc(100% - 40px), 
+    transparent 100%
+  );
 }
 
 /* Ensure firefox support */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 /* Processing Badge Animation */
