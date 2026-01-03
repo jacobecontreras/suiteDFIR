@@ -120,31 +120,29 @@ async def delete_profile(profile_id: int):
 async def get_modules(tool: str):
     """Get available modules for a specific tool"""
     import logging
+    # import sys # sys is no longer needed as stderr prints are removed
     logger = logging.getLogger(__name__)
     
     logger.info(f"get_modules called for tool: {tool}")
-    logger.info(f"available_modules keys: {list(available_modules.keys())}")
     
-    # If tool not in available_modules, try to load plugins (might have just been installed)
-    if tool not in available_modules or len(available_modules.get(tool, {})) == 0:
-        logger.info(f"Tool '{tool}' not in available_modules, attempting to reload plugins...")
-        
-        # Check if tool is actually installed
+    # Reload plugins if empty
+    if tool not in available_modules or not available_modules[tool]:
+        logger.info(f"Tool '{tool}' modules empty, attempting reload...")
         try:
             from tool_manager import tool_manager
             tool_path = tool_manager.get_tool_path(tool)
-            logger.info(f"Tool '{tool}' path from ToolManager: {tool_path}")
+            logger.info(f"Tool path: {tool_path}")
             
-            if tool_path:
-                logger.info(f"Tool is installed, reloading plugins...")
-                from plugin_manager import load_plugins
-                load_plugins()
-                logger.info(f"After reload, available_modules keys: {list(available_modules.keys())}")
+            if tool_path and os.path.exists(tool_path):
+                import plugin_manager
+                plugin_manager.load_plugins()
+                logger.info(f"After reload, module count for {tool}: {len(available_modules.get(tool, {}))}")
         except Exception as e:
             logger.error(f"Error reloading plugins: {e}")
+
     
     if tool not in available_modules:
-        logger.warning(f"Tool '{tool}' still not in available_modules after reload")
+        logger.warning(f"Tool '{tool}' not found after reload attempt")
         raise HTTPException(status_code=404, detail=f"Tool '{tool}' not found or not loaded")
     
     modules = list(available_modules[tool].values())

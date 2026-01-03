@@ -50,7 +50,13 @@ def setup_logging(log_file=None, level=logging.INFO):
         # Add file handler to logger
         logger.addHandler(file_handler)
         
-        logging.info("Logging initialized. Output directed to %s", log_file)
+        # Add console handler to logger as well
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(level)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        
+        logging.info("Logging initialized. Output directed to %s and console", log_file)
     except Exception as e:
         # Fallback to console-only logging if file access fails
         console_handler = logging.StreamHandler()

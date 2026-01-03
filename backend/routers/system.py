@@ -4,6 +4,7 @@ import platform
 import shutil
 import subprocess
 import psutil
+import sys
 import os
 import json
 import asyncio
@@ -44,7 +45,7 @@ async def health_check():
 async def browse_files():
     """
     Open native file dialog to select forensic files.
-    Supports macOS (osascript) and Linux (zenity).
+    Supports macOS (osascript), Windows (PowerShell), and Linux (zenity).
     Returns the absolute path of the selected file.
     """
     try:
@@ -60,6 +61,19 @@ async def browse_files():
             end tell
             '''
             cmd = ['osascript', '-e', script]
+            
+        elif system == "Windows":
+            # PowerShell file dialog for Windows
+            script = '''
+Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.OpenFileDialog
+$dialog.Title = "Select iLEAPP input file"
+$dialog.Filter = "All Files (*.*)|*.*|ZIP Files (*.zip)|*.zip|TAR Files (*.tar)|*.tar"
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+    Write-Output $dialog.FileName
+}
+'''
+            cmd = ['powershell', '-NoProfile', '-Command', script]
             
         elif system == "Linux":
             # Check for zenity
@@ -109,7 +123,7 @@ async def browse_files():
 async def browse_folders():
     """
     Open native folder dialog to select output directory.
-    Supports macOS (osascript) and Linux (zenity).
+    Supports macOS (osascript), Windows (PowerShell), and Linux (zenity).
     Returns the absolute path of the selected folder.
     """
     try:
@@ -125,6 +139,18 @@ async def browse_folders():
             end tell
             '''
             cmd = ['osascript', '-e', script]
+            
+        elif system == "Windows":
+            # PowerShell folder dialog for Windows
+            script = '''
+Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = "Select iLEAPP output folder"
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+    Write-Output $dialog.SelectedPath
+}
+'''
+            cmd = ['powershell', '-NoProfile', '-Command', script]
             
         elif system == "Linux":
             # Check for zenity
@@ -170,18 +196,28 @@ async def browse_folders():
     except Exception as e:
         return FilePathResponse(file_path="", success=False, message=f"Failed to open folder dialog: {str(e)}")
 
+def get_disk_usage():
+    """Get disk usage in a cross-platform way."""
+    if sys.platform == 'win32':
+        # Use the current working directory's drive on Windows
+        root_path = os.path.abspath(os.sep)
+    else:
+        root_path = '/'
+    return shutil.disk_usage(root_path)
+
 @router.get("/api/system/health")
 async def get_system_health():
+    disk = get_disk_usage()
     return {
         "cpu": psutil.cpu_percent(interval=1),
         "ram": psutil.virtual_memory().percent,
-        "disk": psutil.disk_usage('/').percent
+        "disk": (disk.used / disk.total) * 100
     }
 
 @router.get("/api/system/storage")
 async def get_storage_usage(case_id: Optional[int] = None):
-    # Get total disk usage
-    disk = psutil.disk_usage('/')
+    # Get total disk usage using cross-platform shutil.disk_usage
+    disk = get_disk_usage()
     total = disk.total
     free = disk.free
     used = disk.used

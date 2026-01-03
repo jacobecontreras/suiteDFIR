@@ -5,6 +5,7 @@ import logging
 import asyncio
 import importlib.util
 from pathlib import Path
+import shutil
 from state import event_clients
 from config import TOOLS_CONFIG
 from plugin_manager import safe_tool_execution
@@ -111,10 +112,17 @@ async def get_connected_devices():
     # Check for iOS devices using idevice_id
     try:
         idevice_id_cmd = get_binary_path("idevice_id")
+        
+        # Check if binary exists/is in path (shutil.which is good for this)
+        if not shutil.which(idevice_id_cmd):
+            # Quietly return empty if tool is missing
+            return []
+
         proc = await asyncio.create_subprocess_exec(
             idevice_id_cmd, "-l",
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
+
         stdout, _ = await proc.communicate()
         
         if proc.returncode == 0:

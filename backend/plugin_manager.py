@@ -106,11 +106,17 @@ def load_plugins():
 
             logger.info(f"Loading {config['name']} modules from {tool_path}...")
 
+
             with safe_tool_execution(tool_path):
                 # Import plugin_loader from the tool
                 # These imports MUST happen inside the context where sys.path is set
-                import scripts.plugin_loader as plugin_loader
-                import scripts.modules_to_exclude as modules_to_exclude
+                try:
+                    import scripts.plugin_loader as plugin_loader
+                    import scripts.modules_to_exclude as modules_to_exclude
+                    logger.info("Successfully imported scripts.plugin_loader and scripts.modules_to_exclude")
+                except ImportError as e:
+                    logger.error(f"Failed to import tool scripts: {e}")
+                    continue
 
                 # Monkey-patch the plugin_loader to be fault-tolerant
                 original_load_plugins = plugin_loader.PluginLoader._load_plugins
@@ -118,7 +124,12 @@ def load_plugins():
                 def fault_tolerant_load_plugins(self):
                     """Load plugins but skip problematic ones instead of crashing"""
                     import traceback
-                    for py_file in self._plugin_path.glob("*.py"):
+                    import sys
+                    
+                    plugin_files = list(self._plugin_path.glob("*.py"))
+                    
+                    for py_file in plugin_files:
+
                         try:
                             mod = plugin_loader.PluginLoader.load_module_lazy(py_file)
                             mod_artifacts = getattr(mod, '__artifacts_v2__', None) or getattr(mod, '__artifacts__', None)
@@ -215,3 +226,4 @@ def load_plugins():
 
         except Exception as e:
             logger.error(f"Error loading {config['name']} modules: {e}")
+

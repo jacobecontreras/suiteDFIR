@@ -420,12 +420,21 @@ async function stopPythonBackend() {
 
       // Force kill if still running
       if (pythonProcess) {
-        pythonProcess.kill('SIGTERM');
+        // Windows doesn't support SIGTERM, use default kill
+        if (process.platform === 'win32') {
+          pythonProcess.kill();
+        } else {
+          pythonProcess.kill('SIGTERM');
+        }
       }
     } catch (error) {
       // If API call fails, force kill immediately
       logger.warn('Graceful shutdown failed, forcing kill...');
-      pythonProcess.kill('SIGTERM');
+      if (process.platform === 'win32') {
+        pythonProcess.kill();
+      } else {
+        pythonProcess.kill('SIGTERM');
+      }
     }
 
     pythonProcess = null;
