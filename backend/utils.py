@@ -1,5 +1,6 @@
 import os
 import sys
+import platform
 import json
 import logging
 import asyncio
@@ -11,6 +12,17 @@ from config import TOOLS_CONFIG
 from plugin_manager import safe_tool_execution
 
 logger = logging.getLogger(__name__)
+
+def get_operating_system():
+    """Returns the operating system name and version"""
+    return {
+        "system": platform.system(),
+        "release": platform.release(),
+        "version": platform.version(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+        "platform": platform.platform()
+    }
 
 def get_size_format(b, factor=1024, suffix="B"):
     """Scale bytes to its proper format"""

@@ -17,7 +17,7 @@ from typing import Optional
 
 from models import FilePathResponse
 from database import DB_PATH
-from utils import get_size_format, normalize_report_path
+from utils import get_size_format, normalize_report_path, get_operating_system
 from config import TOOLS_CONFIG, REPORTS_DIR
 from state import plugin_loaders, available_modules, event_clients
 
@@ -213,6 +213,11 @@ async def get_system_health():
         "ram": psutil.virtual_memory().percent,
         "disk": (disk.used / disk.total) * 100
     }
+
+@router.get("/api/system/os")
+async def get_os_info():
+    """Return operating system information"""
+    return get_operating_system()
 
 @router.get("/api/system/storage")
 async def get_storage_usage(case_id: Optional[int] = None):

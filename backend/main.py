@@ -15,6 +15,7 @@ from config import TOOLS_CONFIG, REPORTS_DIR
 from plugin_manager import load_plugins
 from routers import cases, reports, profiles, tasks, processing, backups, system, timeline, tools
 from device_watcher import start_device_watcher, stop_device_watcher
+from utils import get_operating_system
 
 # Setup logging
 setup_logging()
@@ -33,6 +34,10 @@ async def lifespan(app: FastAPI):
     # Start device watcher for real-time iOS device detection
     await start_device_watcher()
     logger.info("Device watcher started")
+    
+    # Log Operating System
+    os_info = get_operating_system()
+    logger.info(f"Operating System: {os_info['platform']}")
     
     yield
     
