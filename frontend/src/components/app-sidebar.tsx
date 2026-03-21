@@ -40,27 +40,15 @@ const data = {
             icon: FileText,
         },
     ],
-    ios: [
+    mobile_tools: [
         {
-            title: "Analysis (iLEAPP)",
-            url: "/ileapp",
+            title: "Analysis",
+            url: "/analysis?tool=ileapp",
             icon: Smartphone,
         },
         {
-            title: "Extraction (libimobile)",
-            url: "/ios-backup",
-            icon: Archive,
-        },
-    ],
-    android: [
-        {
-            title: "Analysis (aLEAPP)",
-            url: "/aleapp",
-            icon: Smartphone,
-        },
-        {
-            title: "Extraction (ADB)",
-            url: "/android-backup",
+            title: "Extraction",
+            url: "/extraction?type=ios",
             icon: Archive,
         },
     ],
@@ -83,6 +71,7 @@ export function AppSidebar() {
     const { toggleSidebar } = useSidebar()
     const location = useLocation()
     const pathname = location.pathname
+    const search = location.search
     const navigate = useNavigate()
 
     return (
@@ -107,56 +96,26 @@ export function AppSidebar() {
                 </SidebarGroup>
                 <SidebarGroup>
                     <SidebarGroupLabel className="text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider">Mobile Tools</SidebarGroupLabel>
-                    <SidebarGroupContent className="space-y-4">
-                        <div className="flex flex-col group-data-[state=expanded]:pl-4">
-                            <div className="px-2 py-1.5 text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider group-data-[state=collapsed]:hidden">
-                                iOS
-                            </div>
-                            <SidebarMenu>
-                                {data.ios.map((item) => (
-                                    <SidebarMenuItem key={item.title}>
-                                        <SidebarMenuButton asChild tooltip={item.title} isActive={pathname === item.url}>
-                                            <Link to={item.url}>
-                                                <item.icon />
-                                                <span className="text-[11px] uppercase tracking-wider font-medium">
-                                                    {item.title.split(" (")[0]}
-                                                    {item.title.includes(" (") && (
-                                                        <span className="text-[10px] text-muted-foreground/80 ml-1 lowercase">
-                                                            ({item.title.split(" (")[1]}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                ))}
-                            </SidebarMenu>
-                        </div>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {data.mobile_tools.map((item) => {
+                                const isActive =
+                                    item.url.startsWith('/analysis') ? pathname === '/analysis'
+                                        : item.url.startsWith('/extraction') ? pathname === '/extraction'
+                                            : pathname === item.url && search === ''
 
-                        <div className="flex flex-col group-data-[state=expanded]:pl-4">
-                            <div className="px-2 py-1.5 text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider group-data-[state=collapsed]:hidden">
-                                Android
-                            </div>
-                            <SidebarMenu>
-                                {data.android.map((item) => (
+                                return (
                                     <SidebarMenuItem key={item.title}>
-                                        <SidebarMenuButton asChild tooltip={item.title} isActive={pathname === item.url}>
+                                        <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
                                             <Link to={item.url}>
                                                 <item.icon />
-                                                <span className="text-[11px] uppercase tracking-wider font-medium">
-                                                    {item.title.split(" (")[0]}
-                                                    {item.title.includes(" (") && (
-                                                        <span className="text-[10px] text-muted-foreground/80 ml-1 lowercase">
-                                                            ({item.title.split(" (")[1]}
-                                                        </span>
-                                                    )}
-                                                </span>
+                                                <span className="text-[11px] uppercase tracking-wider font-medium">{item.title}</span>
                                             </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
-                                ))}
-                            </SidebarMenu>
-                        </div>
+                                )
+                            })}
+                        </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
                 <SidebarGroup>

@@ -9,10 +9,8 @@ import MainLayout from './layouts/MainLayout'
 const CasesPage = lazy(() => import('./pages/CasesPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const ReportsPage = lazy(() => import('./pages/ReportsPage'))
-const IleappPage = lazy(() => import('./pages/IleappPage'))
-const AleappPage = lazy(() => import('./pages/AleappPage'))
-const IosBackupPage = lazy(() => import('./pages/IosBackupPage'))
-const AndroidBackupPage = lazy(() => import('./pages/AndroidBackupPage'))
+const AnalysisPage = lazy(() => import('./pages/AnalysisPage'))
+const ExtractionPage = lazy(() => import('./pages/ExtractionPage'))
 const SpatialPage = lazy(() => import('./pages/SpatialPage'))
 const TimelinePage = lazy(() => import('./pages/TimelinePage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
@@ -36,10 +34,12 @@ function App() {
                         <Route element={<MainLayout />}>
                             <Route path="/dashboard" element={<DashboardPage />} />
                             <Route path="/reports" element={<ReportsPage />} />
-                            <Route path="/ileapp" element={<IleappPage />} />
-                            <Route path="/aleapp" element={<AleappPage />} />
-                            <Route path="/ios-backup" element={<IosBackupPage />} />
-                            <Route path="/android-backup" element={<AndroidBackupPage />} />
+                            <Route path="/analysis" element={<AnalysisPage />} />
+                            <Route path="/extraction" element={<ExtractionPage />} />
+                            <Route path="/ileapp" element={<Navigate to="/analysis?tool=ileapp" replace />} />
+                            <Route path="/aleapp" element={<Navigate to="/analysis?tool=aleapp" replace />} />
+                            <Route path="/ios-backup" element={<Navigate to="/extraction?type=ios" replace />} />
+                            <Route path="/android-backup" element={<Navigate to="/extraction?type=android" replace />} />
                             <Route path="/spatial" element={<SpatialPage />} />
                             <Route path="/timeline" element={<TimelinePage />} />
                         </Route>
