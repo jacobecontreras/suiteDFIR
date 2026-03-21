@@ -159,6 +159,8 @@ class ProcessManager:
         if os.path.exists(output_dir):
             existing_dirs = set(os.listdir(output_dir))
 
+        temp_log_path = os.path.join(output_dir, f"{task_id}_processing.log")
+
         try:
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
@@ -185,6 +187,12 @@ class ProcessManager:
                         break
 
                     log_message = line.decode('utf-8', errors='replace').strip()
+
+                    try:
+                        loop = asyncio.get_running_loop()
+                        await loop.run_in_executor(None, lambda: open(temp_log_path, "a", encoding="utf-8").write(log_message + "\n"))
+                    except Exception as e:
+                        logger.error(f"Failed to write log to {temp_log_path}: {e}")
 
                     await broadcast_event("log", {
                         "tool": tool,
@@ -225,7 +233,7 @@ class ProcessManager:
                 logger.error(f"Execution failed for {tool} on {case_name}: {error_msg}")
             
             # Post-processing (identify new report)
-            await self._handle_post_processing(output_dir, existing_dirs, status, tool, case_id, user_report_name, case_name)
+            await self._handle_post_processing(output_dir, existing_dirs, status, tool, case_id, user_report_name, case_name, temp_log_path)
 
             # Notify completion
             if task_id in processing_tasks:
@@ -259,7 +267,7 @@ class ProcessManager:
                 except Exception as e:
                     logger.error(f"Error removing temp profile {profile_path}: {e}")
 
-    async def _handle_post_processing(self, output_dir, existing_dirs, status, tool, case_id, user_report_name, case_name):
+    async def _handle_post_processing(self, output_dir, existing_dirs, status, tool, case_id, user_report_name, case_name, temp_log_path=None):
         """Handle report identification and database/filesystem cleanup."""
         # Check for new dirs
         new_report_path = None
@@ -283,10 +291,22 @@ class ProcessManager:
                     logger.debug(f"Saved report {report_name} to database")
                 except Exception as e:
                     logger.debug(f"Persistence error for report {report_name}: {e}")
+                    
+                # Move log file
+                if temp_log_path and os.path.exists(temp_log_path):
+                    try:
+                        shutil.move(temp_log_path, os.path.join(new_report_path, "processing.log"))
+                    except Exception as e:
+                        logger.error(f"Failed to move temp log to report directory: {e}")
             else:
                 logger.debug("No new report directory found after success")
+                if temp_log_path and os.path.exists(temp_log_path):
+                    os.remove(temp_log_path)
         
         elif status in ["cancelled", "error"]:
+            if temp_log_path and os.path.exists(temp_log_path):
+                os.remove(temp_log_path)
+                
             if new_report_path and os.path.exists(new_report_path):
                 try:
                     await asyncio.to_thread(shutil.rmtree, new_report_path)

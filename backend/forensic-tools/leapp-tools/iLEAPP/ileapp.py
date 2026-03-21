@@ -328,8 +328,9 @@ def main():
 
     initialize_lava(input_path, out_params.output_folder_base, extracttype)
 
-    crunch_artifacts(selected_plugins, extracttype, input_path, out_params, wrap_text, loader, casedata, time_offset,
-        profile_filename, itunes_backup_password)
+    if not crunch_artifacts(selected_plugins, extracttype, input_path, out_params, wrap_text, loader, casedata, time_offset,
+        profile_filename, itunes_backup_password):
+        sys.exit(1)
 
     lava_finalize_output(out_params.output_folder_base)
 

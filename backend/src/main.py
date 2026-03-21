@@ -30,7 +30,7 @@ from utils.device_watcher import start_device_watcher, stop_device_watcher
 from services.case_manager import case_manager
 
 # Setup logging
-log_level = logging.DEBUG if not getattr(sys, 'frozen', False) else logging.INFO
+log_level = logging.INFO
 setup_logging(level=log_level)
 logger = logging.getLogger(__name__)
 

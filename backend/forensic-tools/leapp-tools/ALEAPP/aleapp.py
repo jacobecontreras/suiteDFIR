@@ -292,7 +292,8 @@ def main():
     
     initialize_lava(input_path, out_params.report_folder_base, extracttype)
 
-    crunch_artifacts(selected_plugins, extracttype, input_path, out_params, wrap_text, loader, casedata, profile_filename)
+    if not crunch_artifacts(selected_plugins, extracttype, input_path, out_params, wrap_text, loader, casedata, profile_filename):
+        sys.exit(1)
 
     lava_finalize_output(out_params.report_folder_base)
 

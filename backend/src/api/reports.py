@@ -73,6 +73,22 @@ async def download_report(id: int, background_tasks: BackgroundTasks):
         filename=result["filename"]
     )
 
+@router.post("/{id}/open-log", response_model=MessageResponse)
+async def open_report_log(id: int):
+    """Open the processing.log file for a report in the system's default text editor."""
+    report = await report_manager.get_report(id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    log_path = os.path.join(report['path'], "processing.log")
+    if not os.path.exists(log_path):
+        raise HTTPException(status_code=404, detail="Log file not found for this report")
+
+    return MessageResponse.model_validate(
+        handle_open_path_request(log_path, REPORTS_DIR, "Log file")
+    )
+
+
 @router.get("/{id}/view/{file_path:path}")
 async def serve_report_file(id: int, file_path: str):
     """Serve report files with scroll tracking script injection for HTML files"""

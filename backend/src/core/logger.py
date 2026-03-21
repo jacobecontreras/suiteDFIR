@@ -42,11 +42,11 @@ def setup_logging(log_file: Path = None, level=logging.INFO):
     logger.setLevel(level)
 
     try:
-        # Use RotatingFileHandler to cap file size at 10MB and keep 5 backups
+        # Use RotatingFileHandler to cap file size at 50MB and keep 3 backups
         file_handler = logging.handlers.RotatingFileHandler(
             log_file, 
-            maxBytes=10 * 1024 * 1024, # 10MB
-            backupCount=5
+            maxBytes=50 * 1024 * 1024, # 50MB
+            backupCount=3
         )
         file_handler.setLevel(level)
 

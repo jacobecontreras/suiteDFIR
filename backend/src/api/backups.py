@@ -2,8 +2,11 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi.responses import FileResponse
+import os
 
 from core.config import BACKUPS_DIR
+from core.database import db_fetch_one
 from core.models import (
     BackupInfo,
     BackupRequest,
@@ -66,6 +69,35 @@ async def stream_backup_logs(backup_id: int):
         terminal_statuses=["completed", "failed", "cancelled"],
         cleanup=False
     )
+
+@router.get("/{backup_id}/log")
+async def get_backup_log(backup_id: int):
+    """Retrieve the historical processing log for a backup."""
+    row = await db_fetch_one("SELECT path FROM backups WHERE id = ?", (backup_id,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Backup not found")
+        
+    log_path = os.path.join(row['path'], "processing.log")
+    if not os.path.exists(log_path):
+        raise HTTPException(status_code=404, detail="Log file not found")
+        
+    return FileResponse(log_path, media_type="text/plain")
+
+@router.post("/{backup_id}/open-log", response_model=MessageResponse)
+async def open_backup_log(backup_id: int):
+    """Open the processing.log file for a backup in the system's default text editor."""
+    row = await db_fetch_one("SELECT path FROM backups WHERE id = ?", (backup_id,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Backup not found")
+
+    log_path = os.path.join(row['path'], "processing.log")
+    if not os.path.exists(log_path):
+        raise HTTPException(status_code=404, detail="Log file not found for this backup")
+
+    return MessageResponse.model_validate(
+        handle_open_path_request(log_path, BACKUPS_DIR, "Log file")
+    )
+
 
 @router.post("/{backup_id}/stop", response_model=MessageResponse)
 async def stop_backup(backup_id: int):

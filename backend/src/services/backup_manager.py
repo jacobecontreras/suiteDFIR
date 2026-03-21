@@ -1,6 +1,8 @@
 
 import asyncio
 import os
+import pty
+import subprocess
 import logging
 import shutil
 import time
@@ -12,6 +14,7 @@ from core.state import active_backups, backup_tasks
 from utils.helpers import broadcast_event, get_connected_devices, get_binary_path, check_backup_encryption
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class BackupManager:
     """Manages iOS backup processes and their state."""
@@ -131,7 +134,7 @@ class BackupManager:
             await broadcast_event("backup_update", {"id": backup_id, "status": "in_progress"})
             
             # Stream Output
-            await self._stream_output(backup_id, process)
+            await self._stream_output(backup_id, process, backup_path)
 
             # Wait for Completion
             return_code = await process.wait()
@@ -148,11 +151,12 @@ class BackupManager:
                 del active_backups[backup_id]
 
     async def _run_android_backup_loop(self, backup_id: int, udid: str, backup_path: str, is_rooted: bool):
-        """Internal loop to handle an Android logical extraction via ADB."""
+        """Internal loop to handle an Android logical extraction via ADB.
+        Uses a PTY so that ADB emits per-file progress (it suppresses output when not on a TTY).
+        """
         try:
             await broadcast_event("backup_update", {"id": backup_id, "status": "in_progress"})
             
-            # Start pull process
             adb_cmd = get_binary_path("adb")
             
             # Create subdirectories for organized pulls
@@ -164,62 +168,39 @@ class BackupManager:
                 os.makedirs(data_path, exist_ok=True)
 
             if backup_id in backup_tasks:
-                await backup_tasks[backup_id]["queue"].put(f"Starting Android logical extraction...")
+                import json
+                await backup_tasks[backup_id]["queue"].put(json.dumps({"type": "log", "message": "Starting Android logical extraction..."}))
                 if is_rooted:
-                    await backup_tasks[backup_id]["queue"].put(f"Device is rooted. Will attempt full /data/data/ pull.")
+                    await backup_tasks[backup_id]["queue"].put(json.dumps({"type": "log", "message": "Device is rooted. Will attempt full /data/data/ pull."}))
 
             return_code = 0
 
-            # 1. Pull /sdcard/ (Always available)
+            # 1. Pull /sdcard/ (Always available) -- use PTY for real-time output
             sdcard_cmd = [adb_cmd, '-s', udid, 'pull', '/sdcard/', sdcard_path]
-            process = await asyncio.create_subprocess_exec(
-                *sdcard_cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                limit=1024 * 1024
-            )
-            active_backups[backup_id] = process
-            await self._stream_output(backup_id, process)
-            sdcard_ret = await process.wait()
+            sdcard_ret = await self._run_pty_command(backup_id, sdcard_cmd, backup_path)
             if sdcard_ret != 0:
                 return_code = sdcard_ret
 
             # 2. Pull /data/data/ (If Rooted)
             if is_rooted:
                 if backup_id in backup_tasks:
-                    await backup_tasks[backup_id]["queue"].put(f"Starting /data/data/ pull...")
+                    import json
+                    await backup_tasks[backup_id]["queue"].put(json.dumps({"type": "log", "message": "Starting /data/data/ pull..."}))
                 
-                # Requires running as root
-                data_cmd = [adb_cmd, '-s', udid, 'shell', 'su', '-c', f'cp -r /data/data/* /sdcard/temp_data_pull/']
-                # But actually, ADB can't pull directly if it doesn't run adbd as root.
-                # The safest way is to copy to sdcard temporarily, or use a script.
-                # However, many rooted devices allow "adb root" to restart adbd as root.
-                
-                # Let's try `adb root` first
+                # Try `adb root` first to restart adbd as root
                 root_restart_cmd = [adb_cmd, '-s', udid, 'root']
                 root_proc = await asyncio.create_subprocess_exec(*root_restart_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 await root_proc.communicate()
-                
-                # Wait for reconnect
                 await asyncio.sleep(2)
                 
-                # Now try direct pull
+                # Now try direct pull via PTY
                 data_pull_cmd = [adb_cmd, '-s', udid, 'pull', '/data/data/', data_path]
-                process2 = await asyncio.create_subprocess_exec(
-                    *data_pull_cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
-                    limit=1024 * 1024
-                )
-                active_backups[backup_id] = process2
-                await self._stream_output(backup_id, process2)
-                data_ret = await process2.wait()
+                data_ret = await self._run_pty_command(backup_id, data_pull_cmd, backup_path)
                 
                 if data_ret != 0:
-                    # If direct pull failed, maybe `adb root` didn't stick (production build restrictions).
-                    # A more complex tar/netcat or temp copy would be written here for full robustness.
                     if backup_id in backup_tasks:
-                         await backup_tasks[backup_id]["queue"].put(f"Warning: Direct /data/data/ pull failed. Root access might be restricted by adbd.")
+                        import json
+                        await backup_tasks[backup_id]["queue"].put(json.dumps({"type": "log", "message": "Warning: Direct /data/data/ pull failed. Root access might be restricted by adbd."}))
             
             # Finalize Status and DB
             await self._finalize_backup(backup_id, return_code, backup_path)
@@ -231,6 +212,84 @@ class BackupManager:
         finally:
             if backup_id in active_backups:
                 del active_backups[backup_id]
+
+    async def _run_pty_command(self, backup_id: int, cmd: list, backup_path: str) -> int:
+        """Run a command inside a PTY so it thinks it has a real terminal.
+        Returns the process exit code.
+        """
+        master_fd, slave_fd = pty.openpty()
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                stdin=subprocess.DEVNULL,
+                close_fds=True
+            )
+            os.close(slave_fd)  # Parent doesn't need the slave end
+            slave_fd = -1
+
+            active_backups[backup_id] = process
+
+            # Stream the PTY output asynchronously
+            await self._stream_pty_output(backup_id, master_fd, backup_path)
+
+            # Wait for process to finish
+            process.wait()
+            return process.returncode
+        finally:
+            if slave_fd != -1:
+                os.close(slave_fd)
+            try:
+                os.close(master_fd)
+            except OSError:
+                pass
+
+    async def _stream_pty_output(self, backup_id: int, master_fd: int, backup_path: str):
+        """Read from the PTY master fd and process each line."""
+        import json
+        loop = asyncio.get_running_loop()
+        buffer = bytearray()
+
+        while True:
+            try:
+                # Read from the PTY fd in an executor to avoid blocking the event loop
+                chunk = await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: os.read(master_fd, 4096)),
+                    timeout=120.0
+                )
+
+                if not chunk:
+                    # EOF
+                    if buffer:
+                        await self._process_log_line(backup_id, buffer.decode('utf-8', errors='replace').strip(), backup_path)
+                    break
+
+                for byte_val in chunk:
+                    if byte_val == 13 or byte_val == 10:  # \r or \n
+                        if buffer:
+                            line_text = buffer.decode('utf-8', errors='replace').strip()
+                            buffer.clear()
+                            await self._process_log_line(backup_id, line_text, backup_path)
+                    else:
+                        buffer.append(byte_val)
+
+            except asyncio.TimeoutError:
+                # Check if process is still alive
+                proc = active_backups.get(backup_id)
+                if proc and hasattr(proc, 'poll') and proc.poll() is not None:
+                    break
+                continue
+            except OSError:
+                # PTY closed (process exited)
+                if buffer:
+                    await self._process_log_line(backup_id, buffer.decode('utf-8', errors='replace').strip(), backup_path)
+                break
+            except Exception as e:
+                logger.error(f"Error reading PTY output for {backup_id}: {e}")
+                if backup_id in backup_tasks:
+                    await backup_tasks[backup_id]["queue"].put(json.dumps({"type": "log", "message": f"Error reading log: {str(e)}"}))
+                break
 
     async def _setup_encryption(self, backup_id: int, udid: str, password: str, backup_path: str) -> bool:
         """Enable encryption on the device before backup."""
@@ -265,20 +324,19 @@ class BackupManager:
             return False
         return True
 
-    async def _stream_output(self, backup_id: int, process: asyncio.subprocess.Process):
+    async def _stream_output(self, backup_id: int, process: asyncio.subprocess.Process, backup_path: str):
         """Read and log subprocess output."""
         import json
         buffer = bytearray()
         while True:
             try:
-                # Read in chunks to avoid high asyncio overhead but still handle \r and \n manually
-                chunk = await asyncio.wait_for(process.stdout.read(4096), timeout=60.0)
-                logger.debug(f"Backup {backup_id} read chunk of size {len(chunk)}")
+                # Read byte by byte to ensure immediate flushing for \r lines
+                chunk = await asyncio.wait_for(process.stdout.read(1), timeout=60.0)
                 
                 if not chunk:
                     logger.debug(f"Backup {backup_id} stdout EOF")
                     if buffer:
-                        await self._process_log_line(backup_id, buffer.decode('utf-8', errors='replace').strip())
+                        await self._process_log_line(backup_id, buffer.decode('utf-8', errors='replace').strip(), backup_path)
                     break
 
                 for byte in chunk:
@@ -286,7 +344,7 @@ class BackupManager:
                         if buffer:
                             line_text = buffer.decode('utf-8', errors='replace').strip()
                             buffer.clear()
-                            await self._process_log_line(backup_id, line_text)
+                            await self._process_log_line(backup_id, line_text, backup_path)
                     else:
                         buffer.append(byte)
 
@@ -300,15 +358,32 @@ class BackupManager:
                     await backup_tasks[backup_id]["queue"].put(json.dumps({"type": "log", "message": f"Error reading log: {str(e)}"}))
                 break
 
-    async def _process_log_line(self, backup_id: int, line_text: str):
+    async def _process_log_line(self, backup_id: int, line_text: str, backup_path: str):
         """Process a single complete line or progress update from the backup process."""
         import json
+        import re
+        
+        # Strip ANSI escape sequences (e.g., [K used by adb pull in PTY)
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        line_text = ansi_escape.sub('', line_text).strip()
+        
         logger.debug(f"Backup {backup_id} processing line: {repr(line_text)}")
         if not line_text:
             return
             
+        # Write to persistent log file
+        try:
+            log_file = os.path.join(backup_path, "processing.log")
+            # We use an executor for file I/O to avoid blocking the event loop
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lambda: open(log_file, "a", encoding="utf-8").write(line_text + "\n"))
+        except Exception as e:
+            logger.error(f"Failed to write log to {backup_path}: {e}")
+
         # Skip common noisy lines
         if "*** Waiting for passcode to be entered on the device ***" in line_text:
+            return
+        if "Receiving file" in line_text:
             return
             
         # Check if this is a progress bar update
@@ -316,11 +391,8 @@ class BackupManager:
         progress_type = "overall"
         
         if line_text.startswith('[') and '%' in line_text:
-            if 'Exiting...' in line_text:
-                is_progress = False
-            else:
+            if 'Exiting...' not in line_text:
                 is_progress = True
-                # Try to determine progress type based on typical idevicebackup2 output
                 if 'Finished' in line_text:
                     progress_type = "overall"
                 else:
@@ -346,32 +418,22 @@ class BackupManager:
             logger.debug(f"Backup {backup_id} successfully queued payload")
         else:
             logger.warning(f"Backup {backup_id} not in backup_tasks!")
-        
+            
         # Parse progress for database update
-        if '%' in line_text:
+        if is_progress:
             try:
-                parts = line_text.split('%')[0].split()
-                if parts:
-                    percentage = None
-                    for part in parts:
-                        if part.endswith('%'):
-                            try:
-                                percentage = int(part[:-1])
-                                break
-                            except ValueError:
-                                continue
-                                
-                    if percentage is not None:
-                        # Throttle DB updates - only update every 5% or if 100%
-                        if percentage % 5 == 0 or percentage == 100:
-                            await db_execute(
-                                "UPDATE backups SET progress = ? WHERE id = ?",
-                                (percentage, backup_id)
-                            )
+                # Find the first occurrence of digits (with optional decimal) followed by %
+                match = re.search(r'(\d+(?:\.\d+)?)%', line_text)
+                if match:
+                    percentage = int(float(match.group(1)))
+                    # Throttle DB updates - only update every 5% or if 100%
+                    if percentage % 5 == 0 or percentage == 100:
+                        await db_execute(
+                            "UPDATE backups SET progress = ? WHERE id = ?",
+                            (percentage, backup_id)
+                        )
             except Exception as e:
                 logger.error(f"Error parsing progress: {e}")
-                
-        logger.info(f"Backup {backup_id}: {line_text}")
 
     async def _finalize_backup(self, backup_id: int, return_code: int, backup_path: str):
         """Update DB and perform cleanup based on the process exit code."""
@@ -381,6 +443,12 @@ class BackupManager:
         import json
         if row is None or row['status'] == "cancelled":
             status = 'cancelled'
+            try:
+                log_file = os.path.join(backup_path, "processing.log")
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, lambda: open(log_file, "a", encoding="utf-8").write("Backup cancelled by user.\n"))
+            except Exception:
+                pass
         elif return_code == 0:
             status = 'completed'
             if backup_id in backup_tasks:
