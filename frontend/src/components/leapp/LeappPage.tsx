@@ -1,19 +1,19 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import LogViewer from '../../components/ileapp/LogViewer';
 import FileSelector from '../../components/ileapp/FileSelector';
 import ModuleSelector from '../../components/ileapp/ModuleSelector';
 import ProcessControls from '../../components/ileapp/ProcessControls';
 import { useLeapp } from '@/context/LeappContext';
 
-import { Button, Input, ConfirmDialog, LibraryCard } from '@/components/ui';
+import { Button, Input, ConfirmDialog, LibraryCard, ItemLibrary } from '@/components/ui';
 import { useCase } from '@/context/CaseContext';
-import { FolderOpen, Calendar, Trash2, Loader2, Download } from 'lucide-react';
+import { FolderOpen, Calendar, Trash2, Loader2, Download, FileText } from 'lucide-react';
 import { LoadingPage } from '../ui/LoadingPage';
-import { useConfirmDialog } from '@/hooks';
+import { useConfirmDialog, useHistoricalLogs } from '@/hooks';
 
-import { cn } from '../../lib/utils';
 import { API } from '@/lib/api';
+import { generateProgressBar } from '@/utils/progress';
 
 interface LeappPageProps {
     tool: 'ileapp' | 'aleapp';
@@ -36,27 +36,26 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
     const toolState = states[tool];
     const { config, processing } = toolState;
     const { inputFile, reportName } = config;
-    const { logs, isProcessing, processingReportName } = processing;
+    const { logs, isProcessing, processingReportName, progress } = processing;
 
     const [reports, setReports] = useState<Report[]>([]);
     const { selectedCaseId } = useCase();
     const { config: confirmConfig, show: showConfirm, hide: hideConfirm, handleConfirm } = useConfirmDialog();
-    const [showVerboseLogs, setShowVerboseLogs] = useState(false);
+    const { selectedId: selectedReportId, historicalLogs, handleItemClick: handleReportClick } = useHistoricalLogs(
+        isProcessing,
+        useCallback((id: number) => API.path(`/reports/${id}/view/processing.log`), [])
+    );
 
-    // Filter logs to concise view (artifact start/complete, progress, status)
-    const displayedLogs = useMemo(() => {
-        if (showVerboseLogs) return logs;
-        return logs.filter(line =>
-            line.includes('artifact started') ||
-            line.includes('artifact completed') ||
-            /^\[\d+\/\d+\]/.test(line) ||
-            /^Processing (success|error|cancelled|time|stopped)/i.test(line) ||
-            line.startsWith('Report location') ||
-            line.startsWith('Report generation')
-        );
-    }, [logs, showVerboseLogs]);
+    const activeLogs = isProcessing || !selectedReportId ? logs : historicalLogs;
 
-
+    const handleOpenLogFile = async () => {
+        if (!selectedReportId || isProcessing) return;
+        try {
+            await fetch(API.path(`/reports/${selectedReportId}/open-log`), { method: 'POST' });
+        } catch (error) {
+            console.error('Failed to open log file:', error);
+        }
+    };
 
     // Fetch reports for the current tool
     const fetchReports = useCallback(async () => {
@@ -207,11 +206,13 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
                             <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Processing Log</h3>
                             <div className="flex items-center gap-2">
                                 <Button
-                                    onClick={() => setShowVerboseLogs(v => !v)}
-                                    variant={showVerboseLogs ? 'default' : 'secondary'}
-                                    className="px-3 py-1 h-auto text-xs"
+                                    onClick={handleOpenLogFile}
+                                    variant="secondary"
+                                    className="px-2 py-1 h-auto text-xs"
+                                    disabled={!selectedReportId || isProcessing}
+                                    title="Open log file"
                                 >
-                                    Verbose
+                                    <FileText size={13} />
                                 </Button>
                                 <Button
                                     onClick={() => clearLogs(tool)}
@@ -223,90 +224,84 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
                             </div>
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <LogViewer logs={displayedLogs} enabled={true} />
+                            <LogViewer
+                                logs={activeLogs}
+                                enabled={true}
+                                isProcessing={isProcessing}
+                                progressCurrent={progress?.current ?? 0}
+                                progressLogs={isProcessing && progress ? { overall: `${generateProgressBar(Math.round((progress.current / (progress.total || 1)) * 100))} Processing module ${progress.current} of ${progress.total}...` } : undefined}
+                            />
                         </div>
                     </div>
 
-                    {/* Report Library - Bottom 1/3 */}
-                    <div className="flex-1 flex flex-col min-h-0 bg-[#171717] border border-[#333333] rounded-lg overflow-hidden">
-                        <div className="px-4 py-2 border-b border-[#333333] bg-[#1A1A1A]">
-                            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Report Library</h3>
-                        </div>
-                        <div className="flex-1 flex flex-col p-0 min-h-0 overflow-hidden">
-                            {reports.length === 0 && !isProcessing && !processingReportName ? (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-500">
-                                    <p className="text-sm font-medium">No reports found</p>
-                                    <p className="text-xs text-gray-600 mt-1">Generated reports will appear here</p>
-                                </div>
-                            ) : (
-                                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                                    {/* Processing Report Entry */}
-                                    {processingReportName && (
-                                        <LibraryCard
-                                            title={processingReportName}
-                                            subtitle={
-                                                <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
-                                                    <span className="flex items-center gap-0.5">
-                                                        <Calendar size={9} />
-                                                        {new Date().toLocaleDateString()}
-                                                    </span>
-                                                    {!isProcessing && (
-                                                        <>
-                                                            <span>•</span>
-                                                            <span>Saving report...</span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            }
-                                            status={{
-                                                state: 'processing',
-                                                label: isProcessing ? 'Processing' : 'Completing',
-                                                progress: 100 // Use indeterminate via CSS or full bar
-                                            }}
-                                            actions={[
-                                                { icon: FolderOpen, label: 'Open', onClick: () => { }, disabled: true },
-                                                { icon: Download, label: 'Download', onClick: () => { }, disabled: true },
-                                                { icon: Trash2, label: 'Delete', onClick: () => { }, disabled: true }
-                                            ]}
-                                            className="w-full"
-                                        />
-                                    )}
-
-                                    {/* Existing Reports */}
-                                    {reports.map((report) => (
-                                        <LibraryCard
-                                            key={report.id}
-                                            title={report.name}
-                                            subtitle={
-                                                <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
-                                                    <span className="flex items-center gap-0.5">
-                                                        <Calendar size={9} />
-                                                        {new Date(report.created_at).toLocaleDateString()}
-                                                    </span>
-                                                    <span>•</span>
-                                                    <span>{report.size}</span>
-                                                </div>
-                                            }
-                                            actions={[
-                                                {
-                                                    icon: FolderOpen,
-                                                    label: 'Open Location',
-                                                    onClick: () => handleOpenLocation(report.id)
-                                                },
-                                                {
-                                                    icon: Trash2,
-                                                    label: 'Delete Report',
-                                                    variant: 'destructive',
-                                                    onClick: () => handleDeleteReport(report.id)
-                                                }
-                                            ]}
-                                            className="w-full"
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <ItemLibrary
+                        title="Report Library"
+                        phantomCard={
+                            processingReportName && !reports.some(r => r.name === processingReportName) ? (
+                                <LibraryCard
+                                    title={processingReportName}
+                                    subtitle={
+                                        <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
+                                            <span className="flex items-center gap-0.5">
+                                                <Calendar size={9} />
+                                                {new Date().toLocaleDateString()}
+                                            </span>
+                                            {!isProcessing && (
+                                                <>
+                                                    <span>&bull;</span>
+                                                    <span className="animate-pulse">Finalizing...</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    }
+                                    status={{
+                                        state: 'processing',
+                                        label: isProcessing ? 'Processing' : 'Completing',
+                                        progress: 100
+                                    }}
+                                    actions={[
+                                        { icon: FolderOpen, label: 'Open', onClick: () => { }, disabled: true },
+                                        { icon: Download, label: 'Download', onClick: () => { }, disabled: true },
+                                        { icon: Trash2, label: 'Delete', onClick: () => { }, disabled: true }
+                                    ]}
+                                    className="w-full border-white/20 shadow-xl"
+                                />
+                            ) : undefined
+                        }
+                    >
+                        {reports.map((report) => (
+                            <LibraryCard
+                                key={report.id}
+                                title={report.name}
+                                isSelected={selectedReportId === report.id}
+                                onClick={() => handleReportClick(report.id)}
+                                subtitle={
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
+                                        <span className="flex items-center gap-0.5">
+                                            <Calendar size={9} />
+                                            {new Date(report.created_at).toLocaleDateString()}
+                                        </span>
+                                        <span>&bull;</span>
+                                        <span>{report.size}</span>
+                                    </div>
+                                }
+                                actions={[
+                                    {
+                                        icon: FolderOpen,
+                                        label: 'Open Location',
+                                        onClick: () => handleOpenLocation(report.id)
+                                    },
+                                    {
+                                        icon: Trash2,
+                                        label: 'Delete Report',
+                                        variant: 'destructive',
+                                        onClick: () => handleDeleteReport(report.id)
+                                    }
+                                ]}
+                                className="w-full"
+                            />
+                        ))}
+                    </ItemLibrary>
                 </div>
             </div>
             {/* Confirmation Dialog */}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createLeappApi } from '@/services/leappApi'
 import { RefreshCw, Smartphone, Trash2, ChevronDown, FolderOpen, Download, FileText, HardDrive } from 'lucide-react'
 import { Card, CardContent } from "@/components/ui/Card"
@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Dropdown } from "@/components/ui"
 import { LibraryCard } from "@/components/ui/LibraryCard"
-import { useConfirmDialog } from "@/hooks"
+import { ItemLibrary } from "@/components/ui/ItemLibrary"
+import { useConfirmDialog, useHistoricalLogs } from "@/hooks"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import Iphone15Pro from "@/components/ui/shadcn-io/iphone-15-pro"
 import AndroidPhone from "@/components/ui/shadcn-io/android-phone"
@@ -18,7 +19,7 @@ import { Device, Backup } from "@/types/backup"
 import { cn } from "@/lib/utils"
 import { API } from "@/lib/api"
 import { getUniqueName } from "@/lib/naming"
-
+import { generateProgressBar } from "@/utils/progress"
 
 interface ExtractionPageProps {
     type: 'ios' | 'android';
@@ -71,6 +72,20 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
     const { toast } = useToast()
     const { selectedCaseId } = useCase()
     const { config: confirmConfig, show: showConfirm, hide: hideConfirm, handleConfirm } = useConfirmDialog();
+
+    const { selectedId: selectedBackupId, historicalLogs, handleItemClick: handleBackupClick } = useHistoricalLogs(
+        isBackingUp,
+        useCallback((id: number) => API.path(`/backups/${id}/log`), [])
+    );
+
+    const handleOpenLogFile = async () => {
+        if (!selectedBackupId || isBackingUp) return;
+        try {
+            await fetch(API.path(`/backups/${selectedBackupId}/open-log`), { method: 'POST' });
+        } catch (error) {
+            console.error('Failed to open log file:', error);
+        }
+    };
 
     // Initial fetch on mount for this specific page
     useEffect(() => {
@@ -348,9 +363,9 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                                         {(() => {
                                                             let progressVal = 0;
                                                             if (progressLogs && progressLogs['overall']) {
-                                                                const match = progressLogs['overall'].match(/(\d+)%/);
+                                                                const match = progressLogs['overall'].match(/(\d+(?:\.\d+)?)%/);
                                                                 if (match && match[1]) {
-                                                                    progressVal = parseInt(match[1], 10);
+                                                                    progressVal = Math.round(parseFloat(match[1]));
                                                                 }
                                                             }
                                                             return (
@@ -391,93 +406,153 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                 </div>
 
                 {/* Right Section - Processing Log & Backup Library */}
-                <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 basis-0 min-w-0 h-full flex flex-col min-h-0 gap-4">
                     {/* Processing Log - Top 2/3 */}
                     <div className="flex-[2] min-h-0 bg-[#171717] border border-[#333333] rounded-lg overflow-hidden flex flex-col">
                         <div className="px-4 py-2 border-b border-[#333333] bg-[#1A1A1A] flex justify-between items-center">
                             <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Processing Log</h3>
-                            <Button
-                                onClick={clearLogs}
-                                variant="secondary"
-                                className="px-3 py-1 h-auto text-xs"
-                            >
-                                Clear Logs
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={handleOpenLogFile}
+                                    variant="secondary"
+                                    className="px-2 py-1 h-auto text-xs"
+                                    disabled={!selectedBackupId || isBackingUp}
+                                    title="Open log file"
+                                >
+                                    <FileText size={13} />
+                                </Button>
+                                <Button
+                                    onClick={clearLogs}
+                                    variant="secondary"
+                                    className="px-3 py-1 h-auto text-xs"
+                                >
+                                    Clear
+                                </Button>
+                            </div>
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <LogViewer logs={logs} progressLogs={progressLogs} />
+                            <LogViewer 
+                                logs={isBackingUp || !selectedBackupId ? logs : historicalLogs} 
+                                progressLogs={
+                                    isBackingUp || !selectedBackupId 
+                                      ? (() => {
+                                          const result: Record<string, string> = {};
+                                          Object.entries(progressLogs).forEach(([pType, log]) => {
+                                              // ADB output looks like: "[  3%] /sdcard/... "
+                                              // Sometimes it looks like: "[#       ] 3% /sdcard/... " or similar
+                                              const match = log.match(/(\d+(?:\.\d+)?)%/);
+                                              if (match && match[1]) {
+                                                  const percent = parseFloat(match[1]);
+                                                  
+                                                  // Strip out existing brackets/percentages to extract just the filepath or remaining text
+                                                  let description = log.replace(/\[.*?\]/g, '').replace(/\d+(?:\.\d+)?%/, '').trim();
+                                                  // Clean up trailing/leading brackets or slashes if leftover
+                                                  description = description.replace(/^\]\s*/, '').trim();
+
+                                                  if (type === 'android') {
+                                                      // For Android (ADB), the file progress line contains the overall percentage and the file path.
+                                                      if (pType === 'file') {
+                                                          // Make the overall progress bar slightly shorter so it fits nicely
+                                                          result['overall'] = `${generateProgressBar(percent, 20)} Overall Progress`;
+                                                          // Remove the visual bar for the current file since ADB only provides the overall sync percentage
+                                                          result['file'] = `Current File: ${description}`;
+                                                      } else {
+                                                          result[pType] = `${generateProgressBar(percent, 20)} ${description}`;
+                                                      }
+                                                  } else {
+                                                      // iOS (libimobiledevice)
+                                                      if (pType === 'overall') {
+                                                          result['overall'] = `${generateProgressBar(percent, 20)} Overall Progress`;
+                                                      } else {
+                                                          result[pType] = `${generateProgressBar(percent, 20)} ${description}`;
+                                                      }
+                                                  }
+                                              } else {
+                                                  result[pType] = log;
+                                              }
+                                          });
+                                          // Ensure 'overall' appears before 'file' when rendered
+                                          const sortedResult: Record<string, string> = {};
+                                          if (result['overall']) sortedResult['overall'] = result['overall'];
+                                          Object.keys(result).forEach(k => {
+                                              if (k !== 'overall') sortedResult[k] = result[k];
+                                          });
+                                          return sortedResult;
+                                      })()
+                                      : {}
+                                } 
+                                isProcessing={isBackingUp}
+                                progressCurrent={(() => {
+                                    if (isBackingUp) {
+                                        if (progressLogs && progressLogs['overall']) {
+                                            const match = progressLogs['overall'].match(/(\d+(?:\.\d+)?)%/);
+                                            return match ? Math.round(parseFloat(match[1])) : 0;
+                                        }
+                                    }
+                                    return 0;
+                                })()}
+                                spinnerLabel="Backing up..."
+                            />
                         </div>
                     </div>
 
                     {/* Backup Library - Bottom 1/3 */}
-                    <div className="flex-1 flex flex-col min-h-0 bg-[#171717] border border-[#333333] rounded-lg overflow-hidden mt-4">
-                        <div className="px-4 py-2 border-b border-[#333333] bg-[#1A1A1A]">
-                            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">Backup Library</h3>
-                        </div>
-                        <Card className="flex-1 flex flex-col bg-transparent border-none shadow-none min-h-0">
-                            <CardContent className="flex-1 flex flex-col p-0 min-h-0 overflow-hidden">
-                                {platformBackups.filter(b => b.status !== 'cancelled').length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-500">
-                                        <p className="text-sm font-medium">No backups found</p>
-                                        <p className="text-xs text-gray-600 mt-1">Created backups will appear here</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                                        {platformBackups.filter(b => b.status !== 'cancelled').map((backup) => (
-                                            <LibraryCard
-                                                key={backup.id}
-                                                title={backup.name}
-                                                subtitle={
-                                                    <span className="flex items-center gap-0.5">
-                                                        <Smartphone size={9} />
-                                                        {backup.device_name}
-                                                    </span>
-                                                }
-                                                status={backup.status !== 'completed' ? {
-                                                    state: backup.status === 'in_progress' ? 'processing' :
-                                                        backup.status === 'failed' ? 'error' : 'default',
-                                                    label: backup.status === 'in_progress' ? 'PROCESSING' :
-                                                        backup.status.toUpperCase().replace('_', ' '),
-                                                    progress: backup.progress !== undefined ? backup.progress : 0
-                                                } : undefined}
-                                                actions={[
-                                                    {
-                                                        icon: FolderOpen,
-                                                        label: 'Open Location',
-                                                        disabled: backup.status === 'in_progress',
-                                                        onClick: () => {
-                                                            showConfirm({
-                                                                title: 'Open Location',
-                                                                message: 'Open backup location in Finder?',
-                                                                confirmLabel: 'Open',
-                                                                onConfirm: () => handleOpenLocation(backup.path)
-                                                            });
-                                                        }
-                                                    },
-                                                    {
-                                                        icon: Trash2,
-                                                        label: 'Delete Backup',
-                                                        disabled: backup.status === 'in_progress',
-                                                        variant: 'destructive',
-                                                        onClick: () => {
-                                                            showConfirm({
-                                                                title: 'Delete Backup',
-                                                                message: 'Are you sure you want to delete this backup? This action cannot be undone.',
-                                                                variant: 'destructive',
-                                                                confirmLabel: 'Delete',
-                                                                onConfirm: () => handleDeleteBackup(backup.id)
-                                                            });
-                                                        }
-                                                    }
-                                                ]}
-                                                className="w-full"
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
+                    <ItemLibrary
+                        title="Backup Library"
+                    >
+                        {platformBackups.filter(b => b.status !== 'cancelled').map((backup) => (
+                            <LibraryCard
+                                key={backup.id}
+                                title={backup.name}
+                                isSelected={selectedBackupId === backup.id}
+                                onClick={() => handleBackupClick(backup.id)}
+                                subtitle={
+                                    <span className="flex items-center gap-0.5">
+                                        <Smartphone size={9} />
+                                        {backup.device_name}
+                                    </span>
+                                }
+                                status={backup.status !== 'completed' ? {
+                                    state: backup.status === 'in_progress' ? 'processing' :
+                                        backup.status === 'failed' ? 'error' : 'default',
+                                    label: backup.status === 'in_progress' ? 'PROCESSING' :
+                                        backup.status.toUpperCase().replace('_', ' '),
+                                    progress: backup.progress !== undefined ? backup.progress : 0
+                                } : undefined}
+                                actions={[
+                                    {
+                                        icon: FolderOpen,
+                                        label: 'Open Location',
+                                        disabled: backup.status === 'in_progress',
+                                        onClick: () => {
+                                            showConfirm({
+                                                title: 'Open Location',
+                                                message: 'Open backup location in Finder?',
+                                                confirmLabel: 'Open',
+                                                onConfirm: () => handleOpenLocation(backup.path)
+                                            });
+                                        }
+                                    },
+                                    {
+                                        icon: Trash2,
+                                        label: 'Delete Backup',
+                                        disabled: backup.status === 'in_progress',
+                                        variant: 'destructive',
+                                        onClick: () => {
+                                            showConfirm({
+                                                title: 'Delete Backup',
+                                                message: 'Are you sure you want to delete this backup? This action cannot be undone.',
+                                                variant: 'destructive',
+                                                confirmLabel: 'Delete',
+                                                onConfirm: () => handleDeleteBackup(backup.id)
+                                            });
+                                        }
+                                    }
+                                ]}
+                                className="w-full"
+                            />
+                        ))}
+                    </ItemLibrary>
                 </div>
             </div>
             <ConfirmDialog

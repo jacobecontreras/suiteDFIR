@@ -6,6 +6,7 @@ export * from './Dialog';
 export { default as Dropdown } from './Dropdown';
 export * from './Input';
 export * from './LibraryCard';
+export * from './ItemLibrary';
 export * from './LoadingPage';
 export * from './DataTable';
 export * from './table';

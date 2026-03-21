@@ -280,6 +280,10 @@ export function LeappProvider({ children }: { children: ReactNode }) {
                         nextEnc = true;
                     }
 
+                    if (message.includes("Could not unwrap a protection class key") || message.includes("Incorrect password")) {
+                        window.dispatchEvent(new CustomEvent('leapp-password-error', { detail: { tool } }));
+                    }
+
                     // iLEAPP emits [X/Y] progress natively
                     const nativeMatch = message.match(/\[(\d+)\/(\d+)\]/);
                     if (nativeMatch) {
@@ -322,8 +326,7 @@ export function LeappProvider({ children }: { children: ReactNode }) {
             eventSource.close();
             delete eventSourceRefs.current[tool];
             updateProcessing(tool, {
-                isProcessing: false,
-                processingReportName: null
+                isProcessing: false
             });
         });
 
@@ -339,7 +342,6 @@ export function LeappProvider({ children }: { children: ReactNode }) {
                         processing: {
                             ...prev[toolKey].processing,
                             isProcessing: false,
-                            processingReportName: null,
                             logs: [...prev[toolKey].processing.logs, 'Error: Connection to server lost']
                         }
                     }
@@ -381,13 +383,15 @@ export function LeappProvider({ children }: { children: ReactNode }) {
 
         // Reset state - set total from selected modules count so aLEAPP can track progress
         const moduleCount = selectedModules ? selectedModules.length : 0;
+        
         updateProcessing(tool, {
             logs: [],
             progress: { current: 0, total: moduleCount },
             encryptionDetected: false,
             passwordProvided: !!password,
             isProcessing: true,
-            processingReportName: reportName || null
+            processingReportName: reportName || null,
+            taskId: null // Clear old task ID immediately
         });
 
         try {
@@ -400,12 +404,19 @@ export function LeappProvider({ children }: { children: ReactNode }) {
 
             connectToStream(tool, response.task_id, reportName);
         } catch (error) {
-            const toolKey = tool as keyof LeappPersistedState;
-            updateProcessing(tool, {
-                isProcessing: false,
-                processingReportName: null,
-                logs: [...persistedStates[toolKey].processing.logs, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`]
-            });
+            const errorMessage = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            setPersistedStates(prev => ({
+                ...prev,
+                [tool]: {
+                    ...prev[toolKey],
+                    processing: {
+                        ...prev[toolKey].processing,
+                        isProcessing: false,
+                        processingReportName: null,
+                        logs: [...prev[toolKey].processing.logs, errorMessage]
+                    }
+                }
+            }));
         }
     };
 

@@ -25,6 +25,7 @@ export default function ProcessControls({ tool, inputFile, outputFolder, reportN
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [password, setPassword] = useState('');
   const [isValidating, setIsValidating] = useState(false);
+  const [isPasswordError, setIsPasswordError] = useState(false);
 
   // Watch for runtime encryption detection
   useEffect(() => {
@@ -32,6 +33,21 @@ export default function ProcessControls({ tool, inputFile, outputFolder, reportN
       setShowPasswordDialog(true);
     }
   }, [encryptionDetected]);
+
+  // Listen for password errors broadcast from Context
+  useEffect(() => {
+    const handlePasswordError = (e: any) => {
+      if (e.detail?.tool === tool) {
+        // We re-open the dialog so they can easily retry
+        setIsPasswordError(true);
+        setShowPasswordDialog(true);
+        setPassword(''); 
+      }
+    };
+
+    window.addEventListener('leapp-password-error', handlePasswordError);
+    return () => window.removeEventListener('leapp-password-error', handlePasswordError);
+  }, [tool, toast]);
 
   const handleStart = async () => {
     if (!inputFile) {
@@ -147,14 +163,22 @@ export default function ProcessControls({ tool, inputFile, outputFolder, reportN
             <p className="text-[11px] text-gray-400 leading-relaxed">
               This iTunes backup is encrypted. Please enter the password to decrypt and analyze it.
             </p>
+            {isPasswordError && (
+              <p className="text-[11px] text-red-500 font-medium animate-in fade-in slide-in-from-top-1">
+                Wrong password
+              </p>
+            )}
             <div className="relative">
               <Lock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-500" />
               <Input
                 type="password"
                 placeholder="Backup Password"
-                className="pl-8 h-8 text-xs bg-[#222] border-white/10 focus:border-white/20"
+                className={`pl-8 h-8 text-xs bg-[#222] border-white/10 focus:border-white/20 ${isPasswordError ? 'border-red-500/50 focus:border-red-500' : ''}`}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (isPasswordError) setIsPasswordError(false);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handlePasswordSubmit();
                 }}
