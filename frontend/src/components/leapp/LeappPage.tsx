@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ReactNode } from 'react';
 import LogViewer from '../../components/ileapp/LogViewer';
 import FileSelector from '../../components/ileapp/FileSelector';
 import ModuleSelector from '../../components/ileapp/ModuleSelector';
@@ -18,6 +18,7 @@ import { generateProgressBar } from '@/utils/progress';
 interface LeappPageProps {
     tool: 'ileapp' | 'aleapp';
     toolName: string;
+    actionSlot?: ReactNode;
 }
 
 interface Report {
@@ -30,9 +31,9 @@ interface Report {
     size: string;
 }
 
-function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
+function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionSlot?: ReactNode }) {
     const outputFolder = '';
-    const { states, updateConfig, clearLogs, clearProcessingReportName, fetchModules } = useLeapp();
+    const { states, updateConfig, clearLogs, clearProcessingReportName, fetchModules, stopProcessing } = useLeapp();
     const toolState = states[tool];
     const { config, processing } = toolState;
     const { inputFile, reportName } = config;
@@ -41,15 +42,30 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
     const [reports, setReports] = useState<Report[]>([]);
     const { selectedCaseId } = useCase();
     const { config: confirmConfig, show: showConfirm, hide: hideConfirm, handleConfirm } = useConfirmDialog();
-    const { selectedId: selectedReportId, historicalLogs, handleItemClick: handleReportClick } = useHistoricalLogs(
+    const { selectedId: selectedReportId, historicalLogs, handleItemClick: handleReportClick, clearSelection: clearSelectedReport } = useHistoricalLogs(
         isProcessing,
         useCallback((id: number) => API.path(`/reports/${id}/view/processing.log`), [])
     );
 
-    const activeLogs = isProcessing || !selectedReportId ? logs : historicalLogs;
+    const isViewingActiveLog = isProcessing && !selectedReportId;
+    const currentLogKey = selectedReportId ? `report-${selectedReportId}` : 'active';
+    const currentLogScrollPosition = config.logScrollPos[currentLogKey] ?? 0;
+    const displayedLogs = selectedReportId ? historicalLogs : logs;
+    const processingPercent = progress && progress.total > 0
+        ? Math.round((progress.current / progress.total) * 100)
+        : 0;
+
+    const handleLogScrollPositionChange = useCallback((position: number) => {
+        updateConfig(tool, {
+            logScrollPos: {
+                ...config.logScrollPos,
+                [currentLogKey]: position
+            }
+        });
+    }, [config.logScrollPos, currentLogKey, tool, updateConfig]);
 
     const handleOpenLogFile = async () => {
-        if (!selectedReportId || isProcessing) return;
+        if (!selectedReportId) return;
         try {
             await fetch(API.path(`/reports/${selectedReportId}/open-log`), { method: 'POST' });
         } catch (error) {
@@ -153,7 +169,6 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
             <div className="flex-1 flex gap-[9vh] min-h-0">
                 {/* Left Panel - Input & Controls */}
                 <div className="flex-1 basis-0 min-w-0 h-full flex flex-col gap-6 min-h-0">
-
                     {/* Input & Report Name Row */}
                     <div className="flex gap-6">
                         {/* Report Name Section */}
@@ -185,6 +200,7 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
                     <ModuleSelector
                         tool={tool}
                         isProcessing={isProcessing}
+                        headerSlot={actionSlot}
                     />
 
                     {/* Process Controls */}
@@ -209,8 +225,8 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
                                     onClick={handleOpenLogFile}
                                     variant="secondary"
                                     className="px-2 py-1 h-auto text-xs"
-                                    disabled={!selectedReportId || isProcessing}
-                                    title="Open log file"
+                                    disabled={!selectedReportId}
+                                    title="Open log location"
                                 >
                                     <FileText size={13} />
                                 </Button>
@@ -225,11 +241,16 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
                         </div>
                         <div className="flex-1 overflow-hidden">
                             <LogViewer
-                                logs={activeLogs}
+                                logs={displayedLogs}
                                 enabled={true}
                                 isProcessing={isProcessing}
                                 progressCurrent={progress?.current ?? 0}
-                                progressLogs={isProcessing && progress ? { overall: `${generateProgressBar(Math.round((progress.current / (progress.total || 1)) * 100))} Processing module ${progress.current} of ${progress.total}...` } : undefined}
+                                progressLogs={isViewingActiveLog && progress ? { overall: `${generateProgressBar(Math.round((progress.current / (progress.total || 1)) * 100))} ${progress.current}/${progress.total}` } : undefined}
+                                scrollKey={currentLogKey}
+                                scrollPosition={currentLogScrollPosition}
+                                onScrollPositionChange={handleLogScrollPositionChange}
+                                onStop={isViewingActiveLog ? () => stopProcessing(tool) : undefined}
+                                canStop={isProcessing}
                             />
                         </div>
                     </div>
@@ -240,6 +261,8 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
                             processingReportName && !reports.some(r => r.name === processingReportName) ? (
                                 <LibraryCard
                                     title={processingReportName}
+                                    isSelected={isViewingActiveLog}
+                                    onClick={clearSelectedReport}
                                     subtitle={
                                         <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
                                             <span className="flex items-center gap-0.5">
@@ -256,8 +279,8 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
                                     }
                                     status={{
                                         state: 'processing',
-                                        label: isProcessing ? 'Processing' : 'Completing',
-                                        progress: 100
+                                        label: isProcessing ? `Processing... ${processingPercent}%` : 'Completing',
+                                        progress: isProcessing ? processingPercent : 100
                                     }}
                                     actions={[
                                         { icon: FolderOpen, label: 'Open', onClick: () => { }, disabled: true },
@@ -314,7 +337,6 @@ function LeappContent({ tool }: { tool: 'ileapp' | 'aleapp' }) {
     );
 }
 
-export default function LeappPage({ tool, toolName }: LeappPageProps) {
-    return <LeappContent tool={tool} />;
+export default function LeappPage({ tool, toolName, actionSlot }: LeappPageProps) {
+    return <LeappContent tool={tool} actionSlot={actionSlot} />;
 }
-

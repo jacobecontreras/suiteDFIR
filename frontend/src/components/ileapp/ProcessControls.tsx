@@ -16,7 +16,7 @@ interface ProcessControlsProps {
 }
 
 export default function ProcessControls({ tool, inputFile, outputFolder, reportName, caseId, existingNames }: ProcessControlsProps) {
-  const { states, startProcessing, stopProcessing } = useLeapp();
+  const { states, startProcessing } = useLeapp();
   const toolState = states[tool];
   const { isProcessing, progress, encryptionDetected } = toolState.processing;
   const { selectedModules } = toolState.config;
@@ -124,34 +124,19 @@ export default function ProcessControls({ tool, inputFile, outputFolder, reportN
   return (
     <>
       <div className="w-full">
-        {isProcessing ? (
-          <Button
-            variant="secondary"
-            onClick={() => stopProcessing(tool)}
-            className="w-full relative overflow-hidden bg-[#e5e5e5] text-black hover:bg-[#d4d4d4] border-none"
-          >
-            <div
-              className="absolute inset-0 bg-black/5 transition-all duration-500"
-              style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
-            />
-            <div className="relative z-10 flex items-center justify-center gap-2">
-              <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
-              <span>Stop Processing ({Math.round(progress.total > 0 ? (progress.current / progress.total) * 100 : 0)}%)</span>
-            </div>
-          </Button>
-        ) : (
-          <Button
-            onClick={handleStart}
-            disabled={!canStart || isValidating}
-            className="w-full"
-          >
-            {isValidating ? (
-              "Checking Backup..."
-            ) : (
-              "Start Processing"
-            )}
-          </Button>
-        )}
+        <Button
+          onClick={handleStart}
+          disabled={!canStart || isValidating}
+          className="w-full h-9"
+        >
+          {isValidating ? (
+            "Checking Backup..."
+          ) : isProcessing ? (
+            "Processing..."
+          ) : (
+            "Start Processing"
+          )}
+        </Button>
       </div>
 
       <Dialog open={showPasswordDialog} onOpenChange={(open: boolean) => setShowPasswordDialog(open)}>

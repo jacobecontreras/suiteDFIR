@@ -19,6 +19,7 @@ interface ToolConfig {
     reportName: string;
     selectedModules: string[] | null;
     artifactScrollPos: number;
+    logScrollPos: Record<string, number>;
 }
 
 interface ToolState {
@@ -65,7 +66,8 @@ const INITIAL_CONFIG: ToolConfig = {
     inputFile: '',
     reportName: '',
     selectedModules: null,
-    artifactScrollPos: 0
+    artifactScrollPos: 0,
+    logScrollPos: {}
 };
 
 interface LeappPersistedState {
