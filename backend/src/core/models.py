@@ -191,6 +191,8 @@ class BackupInfo(BaseModel):
     status: str
     path: Optional[str] = None
     created_at: str
+    size: Optional[str] = None
+    progress: Optional[int] = None
     type: str = "ios"
     case_id: int
 

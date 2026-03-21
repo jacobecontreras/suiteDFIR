@@ -119,25 +119,13 @@ class BackupManager:
             # Start Subprocess
             idevice_backup_cmd = get_binary_path("idevicebackup2")
             cmd = [idevice_backup_cmd, 'backup', backup_path, '-u', udid]
-            
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                limit=1024 * 1024  # 1MB
-            )
-            
-            # Store process handle
-            active_backups[backup_id] = process
-            
+
             # Broadcast start
             await broadcast_event("backup_update", {"id": backup_id, "status": "in_progress"})
-            
-            # Stream Output
-            await self._stream_output(backup_id, process, backup_path)
 
-            # Wait for Completion
-            return_code = await process.wait()
+            # Use a PTY for idevicebackup2 as well so prompt/progress lines flush
+            # with terminal-style behavior instead of pipe buffering.
+            return_code = await self._run_pty_command(backup_id, cmd, backup_path)
             
             # Finalize Status and DB
             await self._finalize_backup(backup_id, return_code, backup_path)
@@ -380,9 +368,17 @@ class BackupManager:
         except Exception as e:
             logger.error(f"Failed to write log to {backup_path}: {e}")
 
-        # Skip common noisy lines
+        # Surface the passcode prompt as a dedicated UI state instead of a raw log line.
         if "*** Waiting for passcode to be entered on the device ***" in line_text:
+            if backup_id in backup_tasks:
+                await backup_tasks[backup_id]["queue"].put(json.dumps({
+                    "type": "prompt",
+                    "prompt_type": "device_passcode",
+                    "message": line_text
+                }))
             return
+
+        # Skip common noisy lines
         if "Receiving file" in line_text:
             return
             
@@ -420,7 +416,7 @@ class BackupManager:
             logger.warning(f"Backup {backup_id} not in backup_tasks!")
             
         # Parse progress for database update
-        if is_progress:
+        if is_progress and progress_type == "overall":
             try:
                 # Find the first occurrence of digits (with optional decimal) followed by %
                 match = re.search(r'(\d+(?:\.\d+)?)%', line_text)

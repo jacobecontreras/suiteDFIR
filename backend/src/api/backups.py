@@ -85,7 +85,7 @@ async def get_backup_log(backup_id: int):
 
 @router.post("/{backup_id}/open-log", response_model=MessageResponse)
 async def open_backup_log(backup_id: int):
-    """Open the processing.log file for a backup in the system's default text editor."""
+    """Open the location containing processing.log for a backup in the system file explorer."""
     row = await db_fetch_one("SELECT path FROM backups WHERE id = ?", (backup_id,))
     if not row:
         raise HTTPException(status_code=404, detail="Backup not found")
@@ -95,7 +95,7 @@ async def open_backup_log(backup_id: int):
         raise HTTPException(status_code=404, detail="Log file not found for this backup")
 
     return MessageResponse.model_validate(
-        handle_open_path_request(log_path, BACKUPS_DIR, "Log file")
+        handle_open_path_request(row['path'], BACKUPS_DIR, "Log location")
     )
 
 

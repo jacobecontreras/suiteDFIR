@@ -75,7 +75,7 @@ async def download_report(id: int, background_tasks: BackgroundTasks):
 
 @router.post("/{id}/open-log", response_model=MessageResponse)
 async def open_report_log(id: int):
-    """Open the processing.log file for a report in the system's default text editor."""
+    """Open the location containing processing.log for a report in the system file explorer."""
     report = await report_manager.get_report(id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -85,7 +85,7 @@ async def open_report_log(id: int):
         raise HTTPException(status_code=404, detail="Log file not found for this report")
 
     return MessageResponse.model_validate(
-        handle_open_path_request(log_path, REPORTS_DIR, "Log file")
+        handle_open_path_request(report['path'], REPORTS_DIR, "Log location")
     )
 
 
