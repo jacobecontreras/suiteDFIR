@@ -11,6 +11,7 @@ interface BackupConfig {
     selectedDevice: string;
     isEncrypted: boolean;
     backupPassword: string;
+    logScrollPos: Record<string, number>;
 }
 
 interface BackupState {
@@ -22,6 +23,7 @@ interface BackupState {
     isLoadingDevices: boolean;
     activeBackupId: number | null;
     progressLogs: Record<string, string>;
+    isAwaitingDevicePasscode: boolean;
 }
 
 interface BackupContextType extends BackupState {
@@ -45,13 +47,15 @@ interface BackupPersistedState {
     isBackingUp: boolean;
     activeBackupId: number | null;
     progressLogs: Record<string, string>;
+    isAwaitingDevicePasscode: boolean;
 }
 
 const INITIAL_CONFIG: BackupConfig = {
     backupName: '',
     selectedDevice: '',
     isEncrypted: false,
-    backupPassword: ''
+    backupPassword: '',
+    logScrollPos: {}
 };
 
 const INITIAL_STATE: BackupPersistedState = {
@@ -59,7 +63,8 @@ const INITIAL_STATE: BackupPersistedState = {
     logs: [],
     isBackingUp: false,
     activeBackupId: null,
-    progressLogs: {}
+    progressLogs: {},
+    isAwaitingDevicePasscode: false
 };
 
 interface BackupProviderProps {
@@ -76,7 +81,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
         INITIAL_STATE
     );
 
-    const { config, logs, isBackingUp, activeBackupId, progressLogs } = state;
+    const { config, logs, isBackingUp, activeBackupId, progressLogs, isAwaitingDevicePasscode } = state;
 
     const setConfig = useCallback((updates: Partial<BackupConfig>) => {
         setState(prev => ({ ...prev, config: { ...prev.config, ...updates } }));
@@ -98,6 +103,10 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
         setState(prev => ({ ...prev, activeBackupId: val }));
     }, [setState]);
 
+    const setIsAwaitingDevicePasscode = useCallback((val: boolean) => {
+        setState(prev => ({ ...prev, isAwaitingDevicePasscode: val }));
+    }, [setState]);
+
     const [devices, setDevices] = useState<Device[]>([]);
     const [backups, setBackups] = useState<Backup[]>([]);
     const [hasFetchedBackups, setHasFetchedBackups] = useState(false);
@@ -107,6 +116,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
 
     const api = React.useMemo(() => createLeappApi('ios'), []);
     const logStreamRef = useRef<EventSource | null>(null);
+    const isStartingBackupRef = useRef(false);
 
     const updateConfig = setConfig;
 
@@ -162,6 +172,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
     const connectToLogStream = useCallback((backupId: number, keepExisting = false) => {
         if (logStreamRef.current) {
             logStreamRef.current.close();
+            logStreamRef.current = null;
         }
 
         if (!keepExisting) setLogs([]);
@@ -173,16 +184,41 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
             try {
                 const data = JSON.parse(event.data);
                 if (data.type === 'log') {
+                    if (type === 'ios') {
+                        setIsAwaitingDevicePasscode(false);
+                    }
                     setLogs(prev => [...prev, data.message]);
                 } else if (data.type === 'progress') {
+                    if (type === 'ios') {
+                        setIsAwaitingDevicePasscode(false);
+                    }
                     setProgressLogs(prev => ({
                         ...prev,
                         [data.progress_type]: data.message
                     }));
+
+                    const shouldUpdateOverallProgress = data.progress_type === 'overall';
+                    const percentMatch = shouldUpdateOverallProgress && typeof data.message === 'string'
+                        ? data.message.match(/(\d+(?:\.\d+)?)%/)
+                        : null;
+
+                    if (percentMatch && percentMatch[1]) {
+                        const progress = Math.round(parseFloat(percentMatch[1]));
+                        setBackups(prev => prev.map(backup => (
+                            backup.id === backupId
+                                ? { ...backup, progress }
+                                : backup
+                        )));
+                    }
+                } else if (data.type === 'prompt' && data.prompt_type === 'device_passcode' && type === 'ios') {
+                    setIsAwaitingDevicePasscode(true);
                 }
             } catch (error) {
                 // Fallback for older non-JSON logs
                 if (typeof event.data === 'string' && event.data.trim()) {
+                    if (type === 'ios') {
+                        setIsAwaitingDevicePasscode(false);
+                    }
                     setLogs(prev => [...prev, event.data]);
                 }
             }
@@ -190,8 +226,12 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
 
         eventSource.addEventListener('close', () => {
             eventSource.close();
+            if (logStreamRef.current === eventSource) {
+                logStreamRef.current = null;
+            }
             setIsBackingUp(false);
             setActiveBackupId(null);
+            setIsAwaitingDevicePasscode(false);
             fetchBackups();
         });
 
@@ -200,7 +240,11 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
                 console.error('Backup log stream failed');
             }
             eventSource.close();
+            if (logStreamRef.current === eventSource) {
+                logStreamRef.current = null;
+            }
             // We don't necessarily stop isBackingUp here, polling will catch it
+            setIsAwaitingDevicePasscode(false);
             fetchBackups();
         };
 
@@ -208,6 +252,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
     }, [fetchBackups]);
 
     const startBackup = async (udid: string, name: string, caseId?: number) => {
+        isStartingBackupRef.current = true;
         setIsBackingUp(true);
         setLogs([
             "Initializing backup process...",
@@ -215,20 +260,25 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
             "NOTE: You may see a prompt on your device to enter your passcode to trust this computer."
         ]);
         setProgressLogs({});
+        setIsAwaitingDevicePasscode(type === 'ios');
         try {
             const password = config.isEncrypted ? config.backupPassword : undefined;
             const response = await api.backup.startBackup(udid, name, caseId, password);
             if (response.backup_id) {
                 setActiveBackupId(response.backup_id);
+                setIsBackingUp(true);
                 connectToLogStream(response.backup_id, true);
             }
-            fetchBackups(caseId?.toString());
+            await fetchBackups(caseId?.toString());
             // Clear encryption state after successful start
             updateConfig({ isEncrypted: false, backupPassword: '' });
         } catch (error) {
             console.error('Failed to start backup:', error);
             setIsBackingUp(false);
+            setIsAwaitingDevicePasscode(false);
             throw error;
+        } finally {
+            isStartingBackupRef.current = false;
         }
     };
 
@@ -237,6 +287,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
             await fetch(API.path(`/backups/${backupId}/stop`), { method: 'POST' });
             setIsBackingUp(false);
             setActiveBackupId(null);
+            setIsAwaitingDevicePasscode(false);
             if (logStreamRef.current) {
                 logStreamRef.current.close();
                 logStreamRef.current = null;
@@ -251,6 +302,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
     const clearLogs = () => {
         setLogs([]);
         setProgressLogs({});
+        setIsAwaitingDevicePasscode(false);
     };
 
     // Auto-reconnect to log stream if backup is in progress
@@ -266,15 +318,15 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
             setActiveBackupId(activeBackup.id);
             connectToLogStream(activeBackup.id, true);
         } else if (!activeBackup && isBackingUp) {
+            if (isStartingBackupRef.current || activeBackupId !== null || logStreamRef.current) {
+                return;
+            }
             // Fallback: If we think we are backing up, but the API says no backups are active, reset
             setIsBackingUp(false);
             setActiveBackupId(null);
-            if (logStreamRef.current) {
-                logStreamRef.current.close();
-                logStreamRef.current = null;
-            }
+            setIsAwaitingDevicePasscode(false);
         }
-    }, [backups, isBackingUp, hasFetchedBackups, connectToLogStream, setIsBackingUp, setActiveBackupId, type]);
+    }, [backups, isBackingUp, hasFetchedBackups, connectToLogStream, setIsBackingUp, setActiveBackupId, activeBackupId, type, setIsAwaitingDevicePasscode]);
 
     const value = {
         config,
@@ -285,6 +337,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
         isBackingUp,
         isLoadingDevices,
         activeBackupId,
+        isAwaitingDevicePasscode,
         updateConfig,
         fetchDevices,
         fetchBackups,

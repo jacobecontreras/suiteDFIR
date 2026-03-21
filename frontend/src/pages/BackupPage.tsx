@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, ReactNode } from 'react'
 import { createLeappApi } from '@/services/leappApi'
 import { RefreshCw, Smartphone, Trash2, ChevronDown, FolderOpen, Download, FileText, HardDrive } from 'lucide-react'
 import { Card, CardContent } from "@/components/ui/Card"
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input"
 import { Dropdown } from "@/components/ui"
 import { LibraryCard } from "@/components/ui/LibraryCard"
 import { ItemLibrary } from "@/components/ui/ItemLibrary"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useConfirmDialog, useHistoricalLogs } from "@/hooks"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import Iphone15Pro from "@/components/ui/shadcn-io/iphone-15-pro"
@@ -23,9 +24,10 @@ import { generateProgressBar } from "@/utils/progress"
 
 interface ExtractionPageProps {
     type: 'ios' | 'android';
+    actionSlot?: ReactNode;
 }
 
-export default function ExtractionPage({ type }: ExtractionPageProps) {
+export default function ExtractionPage({ type, actionSlot }: ExtractionPageProps) {
     const {
         config,
         devices,
@@ -34,6 +36,8 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
         progressLogs,
         isBackingUp,
         isLoadingDevices,
+        activeBackupId,
+        isAwaitingDevicePasscode,
         updateConfig,
         fetchDevices,
         fetchBackups,
@@ -60,6 +64,11 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
         const match = platformDevices.find(d => d.udid === selectedDevice);
         return match ? selectedDevice : '';
     }, [selectedDevice, platformDevices]);
+    const selectedPlatformDeviceInfo = useMemo(() => {
+        if (!platformSelectedDevice) return undefined;
+        return platformDevices.find(d => d.udid === platformSelectedDevice);
+    }, [platformDevices, platformSelectedDevice]);
+    const isDeviceEncrypted = selectedPlatformDeviceInfo?.is_encrypted ?? false;
 
     // Platform-specific auto-selection: auto-select the first device of this
     // platform type when devices change, and clear selection when none remain.
@@ -73,13 +82,56 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
     const { selectedCaseId } = useCase()
     const { config: confirmConfig, show: showConfirm, hide: hideConfirm, handleConfirm } = useConfirmDialog();
 
-    const { selectedId: selectedBackupId, historicalLogs, handleItemClick: handleBackupClick } = useHistoricalLogs(
+    const { selectedId: selectedBackupId, historicalLogs, handleItemClick: handleBackupClick, clearSelection: clearSelectedBackup } = useHistoricalLogs(
         isBackingUp,
         useCallback((id: number) => API.path(`/backups/${id}/log`), [])
     );
 
+    const isViewingActiveLog = isBackingUp && !selectedBackupId;
+    const currentLogKey = selectedBackupId ? `backup-${selectedBackupId}` : 'active';
+    const currentLogScrollPosition = config.logScrollPos[currentLogKey] ?? 0;
+    const displayedLogs = selectedBackupId ? historicalLogs : logs;
+    const derivedLiveProgressLogs = useMemo(() => {
+        if (!isViewingActiveLog) return {};
+
+        const combined: Record<string, string> = { ...progressLogs };
+        const progressPattern = /^\[.*?\]\s+\d+(?:\.\d+)?%/;
+
+        for (let i = logs.length - 1; i >= 0; i -= 1) {
+            const line = logs[i]?.trim();
+            if (!line || !progressPattern.test(line)) continue;
+
+            if (!combined.overall && /Finished/i.test(line)) {
+                combined.overall = line;
+                continue;
+            }
+
+            if (!combined.file && !/Finished/i.test(line)) {
+                combined.file = line;
+            }
+
+            if (combined.overall && combined.file) break;
+        }
+
+        return combined;
+    }, [isViewingActiveLog, logs, progressLogs]);
+    const activeProgressPercent = useMemo(() => {
+        if (!derivedLiveProgressLogs['overall']) return 0;
+        const match = derivedLiveProgressLogs['overall'].match(/(\d+(?:\.\d+)?)%/);
+        return match ? Math.round(parseFloat(match[1])) : 0;
+    }, [derivedLiveProgressLogs]);
+
+    const handleLogScrollPositionChange = useCallback((position: number) => {
+        updateConfig({
+            logScrollPos: {
+                ...config.logScrollPos,
+                [currentLogKey]: position
+            }
+        });
+    }, [config.logScrollPos, currentLogKey, updateConfig]);
+
     const handleOpenLogFile = async () => {
-        if (!selectedBackupId || isBackingUp) return;
+        if (!selectedBackupId) return;
         try {
             await fetch(API.path(`/backups/${selectedBackupId}/open-log`), { method: 'POST' });
         } catch (error) {
@@ -176,14 +228,14 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
             <div className="flex-1 min-h-0 flex gap-[9vh]">
                 {/* Left Section - Device Configuration */}
                 <div className="flex-1 flex flex-col min-h-0">
-                    <Card className="flex-1 h-full bg-transparent border-none shadow-none text-white flex flex-col relative overflow-hidden group">
+                    <Card className="flex-1 h-full bg-transparent border-none shadow-none text-white flex flex-col relative overflow-visible group">
                         <CardContent className="flex flex-col h-full relative z-10 p-0">
                             {/* Device Visualization Section - Grows to fill space */}
                             <div className="flex-1 flex flex-col items-center justify-center relative min-h-0">
                                 {/* Glow effect behind device (always visible but subtle) */}
                                 <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full blur-3xl transition-all duration-700 ${platformSelectedDevice ? 'bg-blue-500/10 opacity-50' : 'bg-gray-500/5 opacity-30'}`} />
 
-                                <div className="relative transform transition-transform duration-700 hover:scale-[1.02]">
+                                <div className="relative translate-y-8 transform transition-transform duration-700 hover:translate-y-8 hover:scale-[1.02]">
                                     {type === 'ios' ? (
                                         <Iphone15Pro className="h-[378px] w-auto drop-shadow-2xl">
                                             {!platformSelectedDevice && (
@@ -192,14 +244,16 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                                 </div>
                                             )}
                                             {platformSelectedDevice && (
-                                                <div className="h-full w-full bg-black flex items-center justify-center">
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img
-                                                        src="/apple-logo.svg"
-                                                        alt="Connected"
-                                                        className="w-24 h-24 opacity-80"
-                                                        style={{ filter: 'invert(1)' }}
-                                                    />
+                                                <div className="h-full w-full bg-black flex flex-col px-8 py-8">
+                                                    <div className="flex-1 flex items-center justify-center">
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src="/apple-logo.svg"
+                                                            alt="Connected"
+                                                            className="w-28 h-28 opacity-80"
+                                                            style={{ filter: 'invert(1)' }}
+                                                        />
+                                                    </div>
                                                 </div>
                                             )}
                                         </Iphone15Pro>
@@ -224,76 +278,73 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                         </AndroidPhone>
                                     )}
                                 </div>
-                            </div>
 
-                            {/* Form Controls - Anchored at bottom */}
-                            <div className="space-y-3 pt-6 mt-auto">
-                                {/* Encryption Options (iOS Only) */}
-                                {type === 'ios' && (
-                                    <div className="pt-2">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none group">
-                                                    <div className="relative">
+                                {/* iOS Encrypt Backup - positioned below phone */}
+                                {type === 'ios' && platformSelectedDevice && (
+                                    <div className="absolute top-[calc(50%+230px)] left-1/2 -translate-x-1/2 text-white">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <label className="flex items-center justify-center gap-1.5 cursor-pointer select-none text-center">
+                                                    <div className="relative shrink-0">
                                                         <input
                                                             type="checkbox"
-                                                            checked={isEncrypted || (platformSelectedDevice && platformDevices.find(d => d.udid === platformSelectedDevice)?.is_encrypted) || false}
+                                                            checked={isEncrypted || isDeviceEncrypted}
                                                             onChange={(e) => {
-                                                                const device = platformDevices.find(d => d.udid === platformSelectedDevice);
-                                                                if (device?.is_encrypted) return;
+                                                                if (isDeviceEncrypted) return;
                                                                 updateConfig({ isEncrypted: e.target.checked });
                                                             }}
-                                                            disabled={isBackingUp || (platformSelectedDevice && platformDevices.find(d => d.udid === platformSelectedDevice)?.is_encrypted) || false}
-                                                            className="appearance-none w-3.5 h-3.5 rounded border border-white/40 group-hover:border-white transition-colors focus:ring-0 focus:outline-none"
+                                                            disabled={isBackingUp || isDeviceEncrypted}
+                                                            className="appearance-none w-3.5 h-3.5 rounded border border-white/50 bg-transparent focus:ring-0 focus:outline-none"
                                                             style={{
                                                                 borderWidth: '1px',
-                                                                backgroundColor: (isEncrypted || (platformSelectedDevice && platformDevices.find(d => d.udid === platformSelectedDevice)?.is_encrypted)) ? '#262626' : 'transparent'
+                                                                backgroundColor: (isEncrypted || isDeviceEncrypted) ? '#262626' : 'transparent'
                                                             }}
                                                         />
-                                                        {(isEncrypted || (platformSelectedDevice && platformDevices.find(d => d.udid === platformSelectedDevice)?.is_encrypted)) && (
-                                                            <svg className="absolute w-2.5 h-2.5 text-white pointer-events-none" style={{ top: '2px', left: '2px' }} viewBox="0 0 20 20" fill="currentColor">
+                                                        {(isEncrypted || isDeviceEncrypted) && (
+                                                            <svg className="absolute w-2.5 h-2.5 text-white pointer-events-none" style={{ top: '6px', left: '2px' }} viewBox="0 0 20 20" fill="currentColor">
                                                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                             </svg>
                                                         )}
                                                     </div>
-                                                    Encrypt Backup
-                                                </label>
-                                                {platformSelectedDevice && platformDevices.find(d => d.udid === platformSelectedDevice)?.is_encrypted && (
-                                                    <span
-                                                        className="text-[10px] font-medium px-1.5 py-0 rounded border border-white"
-                                                        style={{ borderWidth: '0.5px', backgroundColor: '#262626', color: 'white' }}
-                                                    >
-                                                        ENABLED ON DEVICE
+                                                    <span className="relative top-px text-[11px] font-medium tracking-wide text-gray-100">
+                                                        Encrypt Backup
                                                     </span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {isEncrypted && !((platformSelectedDevice && platformDevices.find(d => d.udid === platformSelectedDevice)?.is_encrypted)) && (
-                                            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider ml-1 mb-1.5 block">
-                                                    Set Backup Password
                                                 </label>
+                                            </TooltipTrigger>
+                                            {isDeviceEncrypted && (
+                                                <TooltipContent
+                                                    side="top"
+                                                    sideOffset={8}
+                                                    className="max-w-[140px] rounded-md border border-white/5 bg-[#1f1f1f] px-2 py-1.5 text-[10px] leading-[1.4] text-gray-300 shadow-md text-center [&_[data-slot=tooltip-arrow]]:hidden"
+                                                >
+                                                    Already encrypted on device. Use the existing password for analysis.
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
+
+                                        {isEncrypted && !isDeviceEncrypted && (
+                                            <div className="mt-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
                                                 <input
                                                     type="password"
                                                     value={backupPassword}
                                                     onChange={(e) => updateConfig({ backupPassword: e.target.value })}
-                                                    placeholder="Enter password..."
+                                                    placeholder="Password"
                                                     disabled={isBackingUp}
-                                                    className="w-full bg-[#1A1A1A] border-[#333] focus:border-blue-500/50 transition-colors h-9 px-3 rounded-md text-sm text-white"
+                                                    className="w-32 bg-[#1A1A1A] border border-[#333] focus:border-blue-500/50 transition-colors h-6 px-2 rounded text-[10px] text-white"
                                                 />
-                                            </div>
-                                        )}
-
-                                        {platformSelectedDevice && platformDevices.find(d => d.udid === platformSelectedDevice)?.is_encrypted && (
-                                            <div className="animate-in fade-in slide-in-from-top-2 duration-200 mt-2">
-                                                <p className="text-[10px] text-gray-500 ml-1">
-                                                    This device is already encrypted. You will need the existing password to analyze this backup later.
-                                                </p>
                                             </div>
                                         )}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Form Controls - Anchored at bottom */}
+                            <div className="mt-auto min-h-[264px] pt-6 flex flex-col justify-end gap-3">
+                                {actionSlot ? (
+                                    <div className="w-full h-9">
+                                        {actionSlot}
+                                    </div>
+                                ) : null}
 
                                 {/* Name and Target Device Row */}
                                 <div className="flex gap-3">
@@ -349,51 +400,14 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                 </div>
 
                                 {/* Action Button */}
-                                <div className="mt-auto pt-3">
-                                    {platformBackups.find(b => b.status === 'in_progress' && b.device_udid === platformSelectedDevice) ? (
-                                        <div className="w-full">
-                                            {(() => {
-                                                const activeBackup = platformBackups.find(b => b.status === 'in_progress' && b.device_udid === platformSelectedDevice);
-                                                return (
-                                                    <Button
-                                                        variant="secondary"
-                                                        onClick={() => activeBackup && handleStopBackup(activeBackup.id)}
-                                                        className="w-full relative overflow-hidden bg-[#e5e5e5] text-black hover:bg-[#d4d4d4] border-none"
-                                                    >
-                                                        {(() => {
-                                                            let progressVal = 0;
-                                                            if (progressLogs && progressLogs['overall']) {
-                                                                const match = progressLogs['overall'].match(/(\d+(?:\.\d+)?)%/);
-                                                                if (match && match[1]) {
-                                                                    progressVal = Math.round(parseFloat(match[1]));
-                                                                }
-                                                            }
-                                                            return (
-                                                                <>
-                                                                    <div
-                                                                        className="absolute inset-0 bg-black/5 transition-all duration-500"
-                                                                        style={{ width: `${progressVal}%` }}
-                                                                    />
-                                                                    <div className="relative z-10 flex items-center justify-center gap-2">
-                                                                        <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
-                                                                        <span>Stop Backup ({progressVal}%)</span>
-                                                                    </div>
-                                                                </>
-                                                            );
-                                                        })()}
-                                                    </Button>
-                                                );
-                                            })()}
-                                        </div>
-                                    ) : (
-                                        <Button
-                                            className="w-full bg-white text-black hover:bg-gray-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                            onClick={handleStartBackup}
-                                            disabled={!platformSelectedDevice || !backupName || isBackingUp}
-                                        >
-                                            {isBackingUp ? "Starting..." : "Start Backup"}
-                                        </Button>
-                                    )}
+                                <div className="pt-3">
+                                    <Button
+                                        className="w-full h-9 bg-white text-black hover:bg-gray-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={handleStartBackup}
+                                        disabled={!platformSelectedDevice || !backupName || isBackingUp}
+                                    >
+                                        {isBackingUp ? "Backing Up..." : "Start Backup"}
+                                    </Button>
                                 </div>
                             </div>
 
@@ -416,8 +430,8 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                     onClick={handleOpenLogFile}
                                     variant="secondary"
                                     className="px-2 py-1 h-auto text-xs"
-                                    disabled={!selectedBackupId || isBackingUp}
-                                    title="Open log file"
+                                    disabled={!selectedBackupId}
+                                    title="Open log location"
                                 >
                                     <FileText size={13} />
                                 </Button>
@@ -432,12 +446,13 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                         </div>
                         <div className="flex-1 overflow-hidden">
                             <LogViewer 
-                                logs={isBackingUp || !selectedBackupId ? logs : historicalLogs} 
+                                logs={displayedLogs} 
+                                hideLogLines
                                 progressLogs={
-                                    isBackingUp || !selectedBackupId 
+                                    isViewingActiveLog
                                       ? (() => {
                                           const result: Record<string, string> = {};
-                                          Object.entries(progressLogs).forEach(([pType, log]) => {
+                                          Object.entries(derivedLiveProgressLogs).forEach(([pType, log]) => {
                                               // ADB output looks like: "[  3%] /sdcard/... "
                                               // Sometimes it looks like: "[#       ] 3% /sdcard/... " or similar
                                               const match = log.match(/(\d+(?:\.\d+)?)%/);
@@ -464,7 +479,7 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                                       if (pType === 'overall') {
                                                           result['overall'] = `${generateProgressBar(percent, 20)} Overall Progress`;
                                                       } else {
-                                                          result[pType] = `${generateProgressBar(percent, 20)} ${description}`;
+                                                          result[pType] = `${generateProgressBar(percent, 20)} Current File ${description}`;
                                                       }
                                                   }
                                               } else {
@@ -484,14 +499,23 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                 isProcessing={isBackingUp}
                                 progressCurrent={(() => {
                                     if (isBackingUp) {
-                                        if (progressLogs && progressLogs['overall']) {
-                                            const match = progressLogs['overall'].match(/(\d+(?:\.\d+)?)%/);
+                                        if (derivedLiveProgressLogs && derivedLiveProgressLogs['overall']) {
+                                            const match = derivedLiveProgressLogs['overall'].match(/(\d+(?:\.\d+)?)%/);
                                             return match ? Math.round(parseFloat(match[1])) : 0;
                                         }
                                     }
                                     return 0;
                                 })()}
-                                spinnerLabel="Backing up..."
+                                spinnerLabel={
+                                    type === 'ios' && isViewingActiveLog && isAwaitingDevicePasscode
+                                        ? "Enter Passcode on Device..."
+                                        : "Backing up..."
+                                }
+                                scrollKey={currentLogKey}
+                                scrollPosition={currentLogScrollPosition}
+                                onScrollPositionChange={handleLogScrollPositionChange}
+                                onStop={isViewingActiveLog && activeBackupId ? () => handleStopBackup(activeBackupId) : undefined}
+                                canStop={isBackingUp}
                             />
                         </div>
                     </div>
@@ -501,11 +525,17 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                         title="Backup Library"
                     >
                         {platformBackups.filter(b => b.status !== 'cancelled').map((backup) => (
+                            (() => {
+                                const displayProgress = backup.status === 'in_progress' && backup.id === activeBackupId && activeProgressPercent > 0
+                                    ? activeProgressPercent
+                                    : (backup.progress !== undefined ? Math.round(backup.progress) : 0);
+
+                                return (
                             <LibraryCard
                                 key={backup.id}
                                 title={backup.name}
-                                isSelected={selectedBackupId === backup.id}
-                                onClick={() => handleBackupClick(backup.id)}
+                                isSelected={selectedBackupId === backup.id || (isViewingActiveLog && backup.id === activeBackupId)}
+                                onClick={() => backup.id === activeBackupId && isBackingUp ? clearSelectedBackup() : handleBackupClick(backup.id)}
                                 subtitle={
                                     <span className="flex items-center gap-0.5">
                                         <Smartphone size={9} />
@@ -515,9 +545,11 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                 status={backup.status !== 'completed' ? {
                                     state: backup.status === 'in_progress' ? 'processing' :
                                         backup.status === 'failed' ? 'error' : 'default',
-                                    label: backup.status === 'in_progress' ? 'PROCESSING' :
+                                    label: backup.status === 'in_progress'
+                                        ? `Processing... ${displayProgress}%`
+                                        :
                                         backup.status.toUpperCase().replace('_', ' '),
-                                    progress: backup.progress !== undefined ? backup.progress : 0
+                                    progress: displayProgress
                                 } : undefined}
                                 actions={[
                                     {
@@ -551,6 +583,8 @@ export default function ExtractionPage({ type }: ExtractionPageProps) {
                                 ]}
                                 className="w-full"
                             />
+                                );
+                            })()
                         ))}
                     </ItemLibrary>
                 </div>
