@@ -1,4 +1,4 @@
-import { SVGProps } from "react";
+import { SVGProps, useId } from "react";
 
 export interface Iphone15ProProps extends SVGProps<SVGSVGElement> {
     width?: number;
@@ -16,6 +16,8 @@ export default function Iphone15Pro({
     children,
     ...props
 }: Iphone15ProProps) {
+    const clipPathId = useId()
+
     return (
         <svg
             width={width}
@@ -80,7 +82,7 @@ export default function Iphone15Pro({
                     width="389.5"
                     height="843.5"
                     preserveAspectRatio="xMidYMid slice"
-                    clipPath="url(#roundedCorners)"
+                    clipPath={`url(#${clipPathId})`}
                 />
             )}
             {videoSrc && (
@@ -89,7 +91,7 @@ export default function Iphone15Pro({
                     y="19.25"
                     width="389.5"
                     height="843.5"
-                    clipPath="url(#roundedCorners)"
+                    clipPath={`url(#${clipPathId})`}
                 >
                     <video
                         className="size-full object-cover"
@@ -107,7 +109,7 @@ export default function Iphone15Pro({
                     y="19.25"
                     width="389.5"
                     height="843.5"
-                    clipPath="url(#roundedCorners)"
+                    clipPath={`url(#${clipPathId})`}
                 >
                     {children}
                 </foreignObject>
@@ -125,7 +127,7 @@ export default function Iphone15Pro({
                 className="fill-[#404040]"
             />
             <defs>
-                <clipPath id="roundedCorners">
+                <clipPath id={clipPathId}>
                     <rect
                         x="21.25"
                         y="19.25"

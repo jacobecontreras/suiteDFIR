@@ -1,4 +1,4 @@
-import { SVGProps } from "react";
+import { SVGProps, useId } from "react";
 
 export interface AndroidPhoneProps extends SVGProps<SVGSVGElement> {
     width?: number;
@@ -16,6 +16,8 @@ export default function AndroidPhone({
     children,
     ...props
 }: AndroidPhoneProps) {
+    const clipPathId = useId()
+
     return (
         <svg
             width={width}
@@ -68,7 +70,7 @@ export default function AndroidPhone({
                     width="401"
                     height="850"
                     preserveAspectRatio="xMidYMid slice"
-                    clipPath="url(#roundedCorners)"
+                    clipPath={`url(#${clipPathId})`}
                 />
             )}
             {videoSrc && (
@@ -77,7 +79,7 @@ export default function AndroidPhone({
                     y="16"
                     width="401"
                     height="850"
-                    clipPath="url(#roundedCorners)"
+                    clipPath={`url(#${clipPathId})`}
                 >
                     <video
                         className="size-full object-cover"
@@ -95,7 +97,7 @@ export default function AndroidPhone({
                     y="16"
                     width="401"
                     height="850"
-                    clipPath="url(#roundedCorners)"
+                    clipPath={`url(#${clipPathId})`}
                 >
                     {children}
                 </foreignObject>
@@ -107,7 +109,7 @@ export default function AndroidPhone({
             <circle cx="216.5" cy="45" r="2" className="fill-[#303030]" />
 
             <defs>
-                <clipPath id="roundedCorners">
+                <clipPath id={clipPathId}>
                     <rect
                         x="16"
                         y="16"
