@@ -15,12 +15,9 @@ export function useHistoricalLogs(
     const [historicalLogs, setHistoricalLogs] = useState<string[]>([]);
 
     const handleItemClick = useCallback(async (id: number) => {
-        if (isProcessing) return;
-
         // Toggle off if already selected
         if (selectedId === id) {
-            setSelectedId(null);
-            setHistoricalLogs([]);
+            clearSelection();
             return;
         }
 
@@ -37,15 +34,19 @@ export function useHistoricalLogs(
             console.error('Failed to fetch historical logs:', error);
             setHistoricalLogs(['Error loading logs.']);
         }
-    }, [isProcessing, selectedId, buildLogUrl]);
+    }, [selectedId, buildLogUrl]);
+
+    const clearSelection = useCallback(() => {
+        setSelectedId(null);
+        setHistoricalLogs([]);
+    }, []);
 
     // Reset selection when processing starts
     useEffect(() => {
         if (isProcessing) {
-            setSelectedId(null);
-            setHistoricalLogs([]);
+            clearSelection();
         }
-    }, [isProcessing]);
+    }, [isProcessing, clearSelection]);
 
-    return { selectedId, historicalLogs, handleItemClick };
+    return { selectedId, historicalLogs, handleItemClick, clearSelection };
 }

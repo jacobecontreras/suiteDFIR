@@ -8,10 +8,7 @@ export function useAutoScroll(logs: string[], enabled: boolean) {
 
   useEffect(() => {
     if (logs.length > 0 && logsRef.current && shouldAutoScroll && enabled) {
-      const lastLog = logsRef.current.lastElementChild;
-      if (lastLog) {
-        lastLog.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }
+      logsRef.current.scrollTop = logsRef.current.scrollHeight;
     }
   }, [logs, shouldAutoScroll, enabled]);
 
@@ -55,5 +52,6 @@ export function useAutoScroll(logs: string[], enabled: boolean) {
     handleScroll,
     shouldAutoScroll,
     resetAutoScroll,
+    setShouldAutoScroll,
   };
 }
