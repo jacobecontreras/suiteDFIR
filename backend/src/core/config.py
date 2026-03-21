@@ -12,11 +12,11 @@ def get_base_dir() -> Path:
     if getattr(sys, 'frozen', False):
         # Bundled: store in user's Application Support / AppData
         if platform.system() == "Darwin":
-            base = Path.home() / "Library" / "Application Support" / "VDF Tools"
+            base = Path.home() / "Library" / "Application Support" / "suiteDFIR"
         elif platform.system() == "Windows":
-            base = Path.home() / "AppData" / "Local" / "VDF Tools"
+            base = Path.home() / "AppData" / "Local" / "suiteDFIR"
         else:
-            base = Path.home() / ".vdf-tools"
+            base = Path.home() / ".suitedfir"
     else:
         # Development: use backend directory (go up from src/core to backend)
         base = Path(__file__).parent.parent.parent
@@ -59,8 +59,8 @@ def get_tools_dir() -> str:
         # Development: backend/forensic-tools
         return str(BASE_DIR / "forensic-tools")
     else:
-        # Production: Resources/forensic-tools (sibling to VDF Tools Backend)
-        # Structure: Resources/{VDF Tools Backend, forensic-tools}
+        # Production: Resources/forensic-tools (sibling to suiteDFIR Backend)
+        # Structure: Resources/{suiteDFIR Backend, forensic-tools}
         return str(Path(sys.executable).parent.parent / "forensic-tools")
 
 TOOLS_DIR = get_tools_dir()

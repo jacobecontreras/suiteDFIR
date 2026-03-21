@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# VDF Tools Production Build Script for macOS
+# suiteDFIR Production Build Script for macOS
 # This script builds the complete production bundle including:
 # - Python backend executable
 # - Vite static frontend build
@@ -12,7 +12,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 cd "$PROJECT_ROOT"
 
-echo "Building VDF Tools for macOS..."
+echo "Building suiteDFIR for macOS..."
 
 # Step 1: Build Python backend
 echo ""
@@ -20,7 +20,7 @@ echo "Building Python backend..."
 cd backend
 source venv/bin/activate
 rm -rf build dist
-pyinstaller vdf-backend.spec
+pyinstaller suitedfir-backend.spec
 cd "$PROJECT_ROOT"
 echo "Backend built"
 
@@ -41,11 +41,11 @@ yarn install
 yarn electron-builder --dir --mac
 
 # Copy resources manually (extraResource doesn't work reliably)
-APP_PATH="out/mac-arm64/vdf-tools.app"
+APP_PATH="out/mac-arm64/suiteDFIR.app"
 RESOURCES_PATH="$APP_PATH/Contents/Resources"
 
 echo "  Copying Python backend..."
-cp -R ../backend/dist/VDF\ Tools\ Backend "$RESOURCES_PATH/"
+cp -R ../backend/dist/suiteDFIR\ Backend "$RESOURCES_PATH/"
 
 echo "  Copying helper binaries (macOS only)..."
 mkdir -p "$RESOURCES_PATH/bin"
@@ -78,6 +78,5 @@ echo ""
 echo "Build complete"
 echo ""
 echo "Output files:"
-echo "  - Electron .app: electron/out/mac-arm64/vdf-tools.app"
+echo "  - Electron .app: electron/out/mac-arm64/suiteDFIR.app"
 echo "  - DMG Installer: electron/out/"
-

@@ -33,7 +33,7 @@ import { useCase } from './CaseContext';
 
 import { useCasePersistedState } from '@/hooks/useCasePersistedState';
 
-const STORAGE_KEY_PREFIX = 'vdf_spatial_state_';
+const STORAGE_KEY_PREFIX = 'suitedfir_spatial_state_';
 
 interface StoredState {
     center: [number, number];

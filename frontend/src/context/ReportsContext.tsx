@@ -53,7 +53,7 @@ const ReportsContext = createContext<ReportsContextType | undefined>(undefined)
 
 import { useCasePersistedState } from '@/hooks/useCasePersistedState';
 
-const STORAGE_KEY_PREFIX = 'vdf_reports_state_v2_';
+const STORAGE_KEY_PREFIX = 'suitedfir_reports_state_v2_';
 
 interface StoredState {
     selectedReportId: number | null;

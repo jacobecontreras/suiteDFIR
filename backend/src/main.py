@@ -141,7 +141,7 @@ if __name__ == "__main__":
         os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
         
         # Adjust sys.argv to look like standard script execution for the tool
-        # Example: [vdf-backend, --wrapper, tool.py, -i, input] -> [tool.py, -i, input]
+        # Example: [suitedfir-backend, --wrapper, tool.py, -i, input] -> [tool.py, -i, input]
         sys.argv = sys.argv[wrapper_idx + 1:]
         
         try:
@@ -158,7 +158,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     # Parse CLI arguments for port
-    parser = argparse.ArgumentParser(description="VDF Tools Backend")
+    parser = argparse.ArgumentParser(description="suiteDFIR Backend")
     parser.add_argument('--port', type=int, default=8000, help='Port to run the server on')
     args = parser.parse_args()
 
@@ -176,7 +176,7 @@ if __name__ == "__main__":
         sock.close()
         
         # Vital: Print the port so Electron can read it
-        print(f"VDF_TOOLS_BACKEND_PORT:{port}", flush=True)
+        print(f"SUITEDFIR_BACKEND_PORT:{port}", flush=True)
         
         # Run Uvicorn with the explicit port
         if is_bundled:

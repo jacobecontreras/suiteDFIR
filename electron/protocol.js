@@ -1,5 +1,5 @@
 /**
- * Custom app:// protocol for VDF Tools Electron App
+ * Custom app:// protocol for suiteDFIR Electron App
  * 
  * Handles static file serving in production builds.
  */

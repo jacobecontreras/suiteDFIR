@@ -1,5 +1,5 @@
 """
-PyInstaller spec file for VDF Tools Python Backend
+PyInstaller spec file for suiteDFIR Python Backend
 Bundles the FastAPI backend and all dependencies into a single executable
 """
 
@@ -127,7 +127,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='vdf-backend',
+    name='suitedfir-backend',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -149,5 +149,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='VDF Tools Backend',
+    name='suiteDFIR Backend',
 )

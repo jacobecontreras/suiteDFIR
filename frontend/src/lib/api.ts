@@ -1,5 +1,5 @@
 /**
- * Centralized API configuration for VDF Tools
+ * Centralized API configuration for suiteDFIR
  * Supports dynamic port allocation via Electron IPC
  */
 

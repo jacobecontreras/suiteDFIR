@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build script for VDF Tools Python backend
+# Build script for suiteDFIR Python backend
 
 set -e
 
-echo "Building VDF Tools backend for production..."
+echo "Building suiteDFIR backend for production..."
 
 # Activate venv
 source venv/bin/activate
@@ -15,7 +15,7 @@ pip install pyinstaller
 rm -rf build dist
 
 # Build with PyInstaller
-pyinstaller vdf-backend.spec
+pyinstaller suitedfir-backend.spec
 
 echo "✅ Backend build complete!"
-echo "Executable location: backend/dist/VDF Tools Backend/vdf-backend"
+echo "Executable location: backend/dist/suiteDFIR Backend/suitedfir-backend"

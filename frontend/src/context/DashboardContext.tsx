@@ -23,7 +23,7 @@ const DashboardContext = createContext<DashboardContextType | undefined>(undefin
 
 import { useCasePersistedState } from '@/hooks/useCasePersistedState';
 
-const STORAGE_KEY_PREFIX = 'vdf_dashboard_state_';
+const STORAGE_KEY_PREFIX = 'suitedfir_dashboard_state_';
 
 interface StoredState {
     activeTab: 'tasks' | 'notes';

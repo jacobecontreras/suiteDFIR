@@ -92,8 +92,8 @@ def get_binary_path(binary_name):
         
         possible_paths.append(os.path.join(base_dir, 'bin'))
         
-        # 2. Electron Structure: The backend is in "VDF Tools Backend", bin is up one level in "Resources"
-        # contents/Resources/VDF Tools Backend/vdf-backend (executable)
+        # 2. Electron Structure: The backend is in "suiteDFIR Backend", bin is up one level in "Resources"
+        # contents/Resources/suiteDFIR Backend/suitedfir-backend (executable)
         # contents/Resources/bin
         possible_paths.append(os.path.join(base_dir, '..', 'bin'))
         possible_paths.append(os.path.join(base_dir, '..', '..', 'bin')) # Just in case extra nesting

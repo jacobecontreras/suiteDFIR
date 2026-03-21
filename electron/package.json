@@ -1,8 +1,8 @@
 {
-  "name": "vdf-tools-app",
+  "name": "suitedfir-app",
   "version": "0.1.0",
-  "description": "VDF Forensic Tools",
-  "author": "VDF Tools",
+  "description": "suiteDFIR - Digital Forensics and Incident Response Suite",
+  "author": "suiteDFIR",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

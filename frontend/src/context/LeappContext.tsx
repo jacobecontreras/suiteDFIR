@@ -49,7 +49,7 @@ const LeappContext = createContext<LeappContextType | undefined>(undefined)
 
 import { useCasePersistedState } from '@/hooks/useCasePersistedState';
 
-const STORAGE_KEY_PREFIX = 'vdf_leapp_configs_';
+const STORAGE_KEY_PREFIX = 'suitedfir_leapp_configs_';
 const MAX_LOGS = 2000;
 
 const INITIAL_PROCESSING: ProcessingState = {

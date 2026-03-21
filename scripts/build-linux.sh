@@ -4,14 +4,14 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 cd "$PROJECT_ROOT"
 
-echo "Building VDF Tools for Linux..."
+echo "Building suiteDFIR for Linux..."
 
 # Step 1: Build Python backend
 cd backend
 source venv/bin/activate
 echo "Building Python backend with PyInstaller..."
 rm -rf build dist
-pyinstaller vdf-backend.spec
+pyinstaller suitedfir-backend.spec
 cd "$PROJECT_ROOT"
 
 # Step 2: Build Frontend
@@ -35,7 +35,7 @@ echo "Copying resources to Electron app..."
 
 # Copy Python backend
 mkdir -p "$RESOURCES_PATH"
-cp -R ../backend/dist/VDF\ Tools\ Backend "$RESOURCES_PATH/"
+cp -R ../backend/dist/suiteDFIR\ Backend "$RESOURCES_PATH/"
 
 # Copy iOS device binaries (Linux-specific)
 mkdir -p "$RESOURCES_PATH/bin"

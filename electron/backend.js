@@ -1,5 +1,5 @@
 /**
- * Python backend process management for VDF Tools Electron App
+ * Python backend process management for suiteDFIR Electron App
  * 
  * Handles starting, stopping, and health checking the Python backend.
  */
@@ -144,12 +144,12 @@ function logBackendDiagnostics() {
                 const resourceContents = fs.readdirSync(process.resourcesPath);
                 logger.info('Contents of Resources directory:', resourceContents);
 
-                const backendDir = path.join(process.resourcesPath, 'VDF Tools Backend');
+                const backendDir = path.join(process.resourcesPath, 'suiteDFIR Backend');
                 if (fs.existsSync(backendDir)) {
                     const backendContents = fs.readdirSync(backendDir);
-                    logger.info('Contents of VDF Tools Backend directory:', backendContents);
+                    logger.info('Contents of suiteDFIR Backend directory:', backendContents);
                 } else {
-                    logger.error('VDF Tools Backend directory does not exist');
+                    logger.error('suiteDFIR Backend directory does not exist');
                 }
             } catch (e) {
                 logger.error('Failed to list directory contents:', e.message);
@@ -228,7 +228,7 @@ async function start() {
             const output = data.toString();
             logger.debug(`[Backend stdout]: ${output.trim()}`);
 
-            const match = output.match(/VDF_TOOLS_BACKEND_PORT:(\d+)/);
+            const match = output.match(/SUITEDFIR_BACKEND_PORT:(\d+)/);
             if (match && !allocatedPort) {
                 allocatedPort = parseInt(match[1], 10);
                 logger.info('Captured backend port:', allocatedPort);

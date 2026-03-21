@@ -30,7 +30,7 @@ export default function ExtractionPage() {
                     <BackupPage
                         type="ios"
                         actionSlot={
-                            <div className="h-9 w-full rounded-md border border-[#333333] bg-[#171717] p-1 flex">
+                            <div className="h-9 w-full rounded-md border border-[#333333] bg-[#171717] p-1 flex gap-1">
                                 {EXTRACTION_TYPES.map((type) => {
                                     const isActive = type === activeType
                                     const label = type === 'ios' ? 'iOS' : 'Android'
@@ -43,7 +43,7 @@ export default function ExtractionPage() {
                                             className={cn(
                                                 'h-full flex-1 px-4 text-xs font-medium uppercase tracking-wider',
                                                 isActive
-                                                    ? 'bg-white text-black hover:bg-gray-200'
+                                                    ? 'bg-white text-black hover:bg-white hover:text-black dark:hover:bg-white dark:hover:text-black'
                                                     : 'text-gray-400 hover:bg-white/5 hover:text-white'
                                             )}
                                         >
@@ -59,7 +59,7 @@ export default function ExtractionPage() {
                     <BackupPage
                         type="android"
                         actionSlot={
-                            <div className="h-9 w-full rounded-md border border-[#333333] bg-[#171717] p-1 flex">
+                            <div className="h-9 w-full rounded-md border border-[#333333] bg-[#171717] p-1 flex gap-1">
                                 {EXTRACTION_TYPES.map((type) => {
                                     const isActive = type === activeType
                                     const label = type === 'ios' ? 'iOS' : 'Android'
@@ -72,7 +72,7 @@ export default function ExtractionPage() {
                                             className={cn(
                                                 'h-full flex-1 px-4 text-xs font-medium uppercase tracking-wider',
                                                 isActive
-                                                    ? 'bg-white text-black hover:bg-gray-200'
+                                                    ? 'bg-white text-black hover:bg-white hover:text-black dark:hover:bg-white dark:hover:text-black'
                                                     : 'text-gray-400 hover:bg-white/5 hover:text-white'
                                             )}
                                         >

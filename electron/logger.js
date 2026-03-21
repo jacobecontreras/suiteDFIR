@@ -1,8 +1,8 @@
 /**
- * Logger Module for VDF Tools Electron App
+ * Logger Module for suiteDFIR Electron App
  * 
  * Provides file-based logging to diagnose startup issues in packaged apps.
- * Logs are written to: ~/Library/Application Support/VDF Tools/startup.log
+ * Logs are written to: ~/Library/Application Support/suiteDFIR/startup.log
  */
 
 const { app } = require('electron');
@@ -11,7 +11,7 @@ const path = require('path');
 const os = require('os');
 
 // Fallback log path before app is ready
-const FALLBACK_LOG_DIR = path.join(os.tmpdir(), 'vdf-tools-logs');
+const FALLBACK_LOG_DIR = path.join(os.tmpdir(), 'suitedfir-logs');
 const FALLBACK_LOG_PATH = path.join(FALLBACK_LOG_DIR, 'startup.log');
 
 // Log file configuration

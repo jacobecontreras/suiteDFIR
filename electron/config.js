@@ -1,5 +1,5 @@
 /**
- * Configuration constants for VDF Tools Electron App
+ * Configuration constants for suiteDFIR Electron App
  */
 
 const path = require('path');
@@ -15,11 +15,11 @@ const PYTHON_PATH = (() => {
     if (process.platform === 'win32') {
         return isDev
             ? path.join(__dirname, '../backend/venv/Scripts/python.exe')
-            : path.join(process.resourcesPath, 'VDF Tools Backend', 'vdf-backend.exe');
+            : path.join(process.resourcesPath, 'suiteDFIR Backend', 'suitedfir-backend.exe');
     }
     return isDev
         ? path.join(__dirname, '../backend/venv/bin/python')
-        : path.join(process.resourcesPath, 'VDF Tools Backend', 'vdf-backend');
+        : path.join(process.resourcesPath, 'suiteDFIR Backend', 'suitedfir-backend');
 })();
 
 // Frontend URL

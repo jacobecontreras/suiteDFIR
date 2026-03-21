@@ -13,13 +13,13 @@ def get_log_directory() -> Path:
         # Running as bundled executable
         # Use user's home directory for logs
         if platform.system() == "Darwin":
-            log_dir = Path.home() / 'Library' / 'Logs' / 'VDF Tools'
+            log_dir = Path.home() / 'Library' / 'Logs' / 'suiteDFIR'
         elif platform.system() == "Windows":
             app_data = os.environ.get('APPDATA')
             base = Path(app_data) if app_data else Path(tempfile.gettempdir())
-            log_dir = base / 'VDF Tools' / 'Logs'
+            log_dir = base / 'suiteDFIR' / 'Logs'
         else:
-            log_dir = Path.home() / '.vdf-tools' / 'logs'
+            log_dir = Path.home() / '.suitedfir' / 'logs'
     else:
         # Running in development - use current directory
         log_dir = Path(__file__).parent.resolve()

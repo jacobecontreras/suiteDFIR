@@ -1,5 +1,5 @@
 """
-Tool Manager for VDF Tools
+Tool Manager for suiteDFIR
 Manages paths to vendored iLEAPP/aLEAPP forensic tools.
 """
 

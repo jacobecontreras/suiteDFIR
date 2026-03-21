@@ -28,7 +28,7 @@ const TimelineContext = createContext<TimelineContextType | undefined>(undefined
 
 import { useCasePersistedState } from '@/hooks/useCasePersistedState';
 
-const STORAGE_KEY_PREFIX = 'vdf_timeline_state_v2_';
+const STORAGE_KEY_PREFIX = 'suitedfir_timeline_state_v2_';
 
 const INITIAL_CONFIG: TimelineConfig = {
     selectedReportId: 'all',

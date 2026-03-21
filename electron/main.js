@@ -1,5 +1,5 @@
 /**
- * VDF Tools Electron Application Entry Point
+ * suiteDFIR Electron Application Entry Point
  * 
  * This is the main orchestrator that coordinates all modules.
  */

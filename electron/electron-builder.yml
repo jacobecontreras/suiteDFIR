@@ -1,5 +1,5 @@
-appId: com.vdftools.app
-productName: vdf-tools
+appId: com.suitedfir.app
+productName: suiteDFIR
 artifactName: "${productName}-${version}-${arch}.${ext}"
 
 asar: true
@@ -26,7 +26,7 @@ mac:
   category: public.app-category.utilities
 
 dmg:
-  title: "VDF Tools"
+  title: "suiteDFIR"
   format: ULFO
 
 win:

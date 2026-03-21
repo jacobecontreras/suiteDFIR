@@ -1,5 +1,5 @@
 /**
- * Window management for VDF Tools Electron App
+ * Window management for suiteDFIR Electron App
  * 
  * Handles creation and management of main window and splash screen.
  */

@@ -1,1 +1,1 @@
-"""VDF Tools Backend Application"""
+"""suiteDFIR Backend Application"""

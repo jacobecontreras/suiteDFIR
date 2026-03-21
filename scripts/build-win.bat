@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 echo ==========================================
-echo   VDF Tools Production Build (Windows)
+echo   suiteDFIR Production Build (Windows)
 echo ==========================================
 
 REM --- Configuration ---
@@ -38,11 +38,11 @@ pip install pyinstaller
 echo   Running PyInstaller...
 if exist build rd /s /q build
 if exist dist rd /s /q dist
-pyinstaller vdf-backend.spec
+pyinstaller suitedfir-backend.spec
 
 echo   Checking if backend executable exists...
-if not exist "dist\VDF Tools Backend\vdf-backend.exe" (
-    echo [ERROR] Backend build likely failed. Executable not found at "dist\VDF Tools Backend\vdf-backend.exe".
+if not exist "dist\suiteDFIR Backend\suitedfir-backend.exe" (
+    echo [ERROR] Backend build likely failed. Executable not found at "dist\suiteDFIR Backend\suitedfir-backend.exe".
     exit /b 1
 )
 echo   Backend built successfully.
@@ -85,8 +85,8 @@ echo [4/5] Copying Resources...
 set "RESOURCES_PATH=%APP_ROOT%\resources"
 
 echo   Copying Backend...
-if not exist "%RESOURCES_PATH%\VDF Tools Backend" mkdir "%RESOURCES_PATH%\VDF Tools Backend"
-xcopy /E /I /Y /Q "%BACKEND_DIR%\dist\VDF Tools Backend" "%RESOURCES_PATH%\VDF Tools Backend"
+if not exist "%RESOURCES_PATH%\suiteDFIR Backend" mkdir "%RESOURCES_PATH%\suiteDFIR Backend"
+xcopy /E /I /Y /Q "%BACKEND_DIR%\dist\suiteDFIR Backend" "%RESOURCES_PATH%\suiteDFIR Backend"
 
 echo   Copying Frontend...
 if not exist "%RESOURCES_PATH%\dist" mkdir "%RESOURCES_PATH%\dist"
