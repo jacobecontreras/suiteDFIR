@@ -332,6 +332,12 @@ class SettingValue(BaseModel):
     """Request body for updating a setting."""
     value: str
 
+
+class ApiKeyVerificationResponse(BaseModel):
+    """Result of verifying a Google Maps API key against required services."""
+    valid: bool
+    message: str
+
 class TileSessionRequest(BaseModel):
     """Request body for creating a Google Maps tile session."""
     mapType: str = "roadmap"
@@ -361,20 +367,19 @@ class KmlImportResponse(BaseModel):
     filename: str
 
 
-# SPATIAL SEARCH MODELS
-
-class PlaceSuggestion(BaseModel):
-    """Single place suggestion from autocomplete."""
-    placeId: str
-    mainText: str
-    secondaryText: str
-
-
 class GeocodeResult(BaseModel):
     """Single geocoding result with coordinates."""
     lat: str
     lon: str
     display_name: str
+
+
+class PlaceSuggestion(BaseModel):
+    """Single Google Places autocomplete suggestion."""
+    place_id: str
+    display_name: str
+    primary_text: Optional[str] = None
+    secondary_text: Optional[str] = None
 
 # SPATIAL TILE RESPONSE MODELS
 
