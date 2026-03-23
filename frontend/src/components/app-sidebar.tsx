@@ -6,8 +6,7 @@ import {
     Clock,
     PanelLeft,
     Archive,
-    ChevronLeft,
-    Settings
+    ChevronLeft
 } from "lucide-react"
 
 import {
@@ -148,13 +147,6 @@ export function AppSidebar() {
                             className="h-10 flex-1 hover:bg-sidebar-accent p-0 flex items-center justify-center group-data-[state=collapsed]:hidden"
                         >
                             <ChevronLeft className="h-5 w-5" />
-                        </SidebarMenuButton>
-                        <SidebarMenuButton
-                            tooltip="Settings"
-                            onClick={() => navigate('/settings')}
-                            className="h-10 flex-1 hover:bg-sidebar-accent p-0 flex items-center justify-center group-data-[state=collapsed]:hidden"
-                        >
-                            <Settings className="h-5 w-5" />
                         </SidebarMenuButton>
                         <SidebarMenuButton
                             tooltip="Toggle Sidebar"
