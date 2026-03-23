@@ -257,6 +257,7 @@ function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionS
 
                     <ItemLibrary
                         title="Report Library"
+                        emptyMessage="No reports yet."
                         phantomCard={
                             processingReportName && !reports.some(r => r.name === processingReportName) ? (
                                 <LibraryCard

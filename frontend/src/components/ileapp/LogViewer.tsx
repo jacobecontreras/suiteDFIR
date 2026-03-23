@@ -16,6 +16,7 @@ interface LogViewerProps {
   onScrollPositionChange?: (position: number) => void;
   onStop?: () => void;
   canStop?: boolean;
+  emptyMessage?: string;
 }
 
 export default function LogViewer({ 
@@ -30,7 +31,8 @@ export default function LogViewer({
   scrollPosition = 0,
   onScrollPositionChange,
   onStop,
-  canStop = false
+  canStop = false,
+  emptyMessage = "No activity yet."
 }: LogViewerProps) {
   const displayedLogs = useMemo(() => (
     hideLogLines
@@ -202,6 +204,8 @@ export default function LogViewer({
 
   // Priority 4: Finally, if idle and empty, show an empty container.
   return (
-    <div className="h-full bg-[#171717]" />
+    <div className="h-full flex items-center justify-center bg-[#171717] px-4">
+      <p className="text-[11px] text-gray-500 uppercase tracking-wider text-center">{emptyMessage}</p>
+    </div>
   );
 }
