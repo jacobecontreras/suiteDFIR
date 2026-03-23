@@ -24,6 +24,9 @@ from core.logger import setup_logging
 from core.database import init_database
 from core.config import BASE_DIR
 
+# Enable auto-reload in development mode only (set by Electron)
+IS_DEV = os.environ.get('SUITEDFIR_DEV', 'false').lower() == 'true'
+
 from services.plugin_manager import load_plugins
 from api import cases, reports, profiles, dashboard, processing, backups, system, timeline, tools, settings, tiles
 from utils.device_watcher import start_device_watcher, stop_device_watcher
@@ -177,15 +180,23 @@ if __name__ == "__main__":
         
         # Vital: Print the port so Electron can read it
         print(f"SUITEDFIR_BACKEND_PORT:{port}", flush=True)
-        
+
         # Run Uvicorn with the explicit port
         if is_bundled:
+            # Production: use in-memory app object, no reload
             uvicorn.run(app, host="0.0.0.0", port=port)
         else:
-            uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
+            # Development: use module string for reload, gated by IS_DEV
+            # Use src.main:app for correct module resolution in reload subprocesses
+            app_module = "src.main:app" if IS_DEV else "main:app"
+            uvicorn.run(app_module, host="0.0.0.0", port=port, reload=IS_DEV)
     else:
         # Standard port binding
         if is_bundled:
+            # Production: use in-memory app object, no reload
             uvicorn.run(app, host="0.0.0.0", port=args.port)
         else:
-            uvicorn.run("main:app", host="0.0.0.0", port=args.port, reload=False)
+            # Development: use module string for reload, gated by IS_DEV
+            # Use src.main:app for correct module resolution in reload subprocesses
+            app_module = "src.main:app" if IS_DEV else "main:app"
+            uvicorn.run(app_module, host="0.0.0.0", port=args.port, reload=IS_DEV)

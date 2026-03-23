@@ -12,6 +12,7 @@ from core.config import BACKUPS_DIR
 from core.database import db_execute, db_fetch_one, db_fetch_all, db_execute_return_id
 from core.state import active_backups, backup_tasks
 from utils.helpers import broadcast_event, get_connected_devices, get_binary_path, check_backup_encryption
+from utils.fs_ops import FileOperations
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -494,28 +495,12 @@ class BackupManager:
 
     async def calc_backup_size(self, backup_path: str) -> int:
         """Calculate total size of a backup folder asynchronously."""
-        def _calc():
-            total_size = 0
-            if not os.path.exists(backup_path):
-                return 0
-            for dirpath, dirnames, filenames in os.walk(backup_path):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    if not os.path.islink(fp):
-                        try:
-                            total_size += os.path.getsize(fp)
-                        except OSError:
-                            pass 
-            return total_size
-
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, _calc)
+        return await FileOperations.calc_directory_size(backup_path)
 
     async def cleanup_backup_files(self, backup_path: str):
         """Delete backup files from disk asynchronously."""
         try:
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, shutil.rmtree, backup_path)
+            await FileOperations.delete_path(backup_path)
             logger.info(f"Deleted backup directory {backup_path}")
         except FileNotFoundError:
             # Path doesn't exist, nothing to clean up

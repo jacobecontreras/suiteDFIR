@@ -6,6 +6,7 @@
 
 const { spawn } = require('child_process');
 const fs = require('fs');
+const net = require('net');
 const path = require('path');
 const config = require('./config');
 const logger = require('./logger');
@@ -123,6 +124,28 @@ async function continueWaitingForBackend(maxWaitTime = 300000) {
 }
 
 /**
+ * Check if a port is available
+ * @param {number} port - Port to check
+ * @returns {Promise<boolean>} true if port is available
+ */
+function isPortAvailable(port) {
+    return new Promise((resolve) => {
+        const server = net.createServer();
+
+        server.once('error', () => {
+            resolve(false);
+        });
+
+        server.once('listening', () => {
+            server.close();
+            resolve(true);
+        });
+
+        server.listen(port, '0.0.0.0');
+    });
+}
+
+/**
  * Log diagnostic information about the backend executable
  */
 function logBackendDiagnostics() {
@@ -190,23 +213,38 @@ async function start() {
         return false;
     }
 
-    // Use Port 0 (dynamic allocation by backend)
-    // We will parse the port from the backend's stdout
-    allocatedPort = null;
+    // In development with hot reload, use fixed port for stable URL
+    // In production, use dynamic port allocation (port 0)
+    const useFixedPort = config.isDev;
+    const portArg = useFixedPort ? config.BACKEND_DEV_PORT.toString() : '0';
+
+    // Check port availability in dev mode before spawning
+    if (useFixedPort) {
+        const portAvailable = await isPortAvailable(config.BACKEND_DEV_PORT);
+        if (!portAvailable) {
+            logger.error(`Development port ${config.BACKEND_DEV_PORT} is already in use`);
+            logger.error('Please free the port or set SUITEDFIR_DEV_PORT to a different port');
+            windows.updateSplashStatus('Port already in use');
+            return false;
+        }
+        logger.info(`Using fixed dev port: ${config.BACKEND_DEV_PORT}`);
+    }
 
     // Build spawn arguments
     let cmd = config.PYTHON_PATH;
     let args = [];
     let cwd = undefined;
+    let env = { ...process.env };
 
     if (config.isDev) {
-        // Dev: pass port 0, backend will self-assign
-        args = ['-m', 'src.main', '--port', '0'];
+        // Dev: use fixed port and enable hot reload via env var
+        args = ['-m', 'src.main', '--port', portArg];
         cwd = path.join(__dirname, '../backend');
-        logger.info('Dev mode - running uvicorn with dynamic port');
+        env.SUITEDFIR_DEV = 'true';
+        logger.info(`Dev mode - running uvicorn with hot reload on port ${portArg}`);
     } else {
-        // Production: pass port 0, backend will self-assign
-        args = ['--port', '0'];
+        // Production: use dynamic port allocation
+        args = ['--port', portArg];
         logger.info('Production mode - running bundled executable with dynamic port');
     }
 
@@ -218,20 +256,24 @@ async function start() {
         pythonProcess = spawn(cmd, args, {
             cwd,
             shell: false,
-            stdio: ['ignore', 'pipe', 'pipe']
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env
         });
 
         logger.info('Backend process spawned with PID:', pythonProcess.pid);
 
-        // Listen for the magic port string
+        // Listen for the magic port string (production mode only)
         pythonProcess.stdout.on('data', (data) => {
             const output = data.toString();
             logger.debug(`[Backend stdout]: ${output.trim()}`);
 
-            const match = output.match(/SUITEDFIR_BACKEND_PORT:(\d+)/);
-            if (match && !allocatedPort) {
-                allocatedPort = parseInt(match[1], 10);
-                logger.info('Captured backend port:', allocatedPort);
+            // In production mode, capture the dynamically allocated port
+            if (!useFixedPort) {
+                const match = output.match(/SUITEDFIR_BACKEND_PORT:(\d+)/);
+                if (match && !allocatedPort) {
+                    allocatedPort = parseInt(match[1], 10);
+                    logger.info('Captured backend port:', allocatedPort);
+                }
             }
         });
 
@@ -259,17 +301,23 @@ async function start() {
         return false;
     }
 
-    // Wait for the port to be captured
-    let portCaptureAttempts = 0;
-    while (!allocatedPort && portCaptureAttempts < 30) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        portCaptureAttempts++;
-    }
+    // Wait for the port to be captured (production mode only)
+    // In dev mode with fixed port, we already know the port
+    if (useFixedPort) {
+        allocatedPort = config.BACKEND_DEV_PORT;
+        logger.info('Using fixed dev port:', allocatedPort);
+    } else {
+        let portCaptureAttempts = 0;
+        while (!allocatedPort && portCaptureAttempts < 30) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            portCaptureAttempts++;
+        }
 
-    if (!allocatedPort) {
-        logger.error('Failed to capture backend port from stdout');
-        windows.updateSplashStatus('Failed to connect to backend');
-        return false;
+        if (!allocatedPort) {
+            logger.error('Failed to capture backend port from stdout');
+            windows.updateSplashStatus('Failed to connect to backend');
+            return false;
+        }
     }
 
     // Wait for backend to be healthy

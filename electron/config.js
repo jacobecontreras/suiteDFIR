@@ -8,6 +8,7 @@ const isDev = require('electron-is-dev');
 // Backend configuration - dynamic port allocation
 const BACKEND_PREFERRED_PORT = 8000;
 const BACKEND_PORT_RANGE = [8000, 8100]; // Range to search for available port
+const BACKEND_DEV_PORT = parseInt(process.env.SUITEDFIR_DEV_PORT || '8000', 10);
 
 // Python executable path
 // In production, use bundled executable; in development, use venv Python
@@ -54,6 +55,7 @@ module.exports = {
     isDev,
     BACKEND_PREFERRED_PORT,
     BACKEND_PORT_RANGE,
+    BACKEND_DEV_PORT,
     PYTHON_PATH,
     FRONTEND_URL,
     MAX_HEALTH_CHECK_RETRIES,

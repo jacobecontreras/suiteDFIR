@@ -1,15 +1,16 @@
 import os
-import shutil
 import logging
 import asyncio
 import re
 import mimetypes
 import tempfile
+import shutil
 from typing import List, Dict, Any, Optional
 from core.database import db_execute, db_fetch_all
 from core.config import REPORTS_DIR
 from utils.helpers import get_size_format
 from utils.constants import SCROLL_TRACKING_SCRIPT
+from utils.fs_ops import FileOperations
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +72,9 @@ class ReportManager:
             raise FileNotFoundError("Report not found")
         
         path = report['path']
-        
+
         # Security check: ensure path is within reports directory
-        if not os.path.abspath(path).startswith(os.path.abspath(REPORTS_DIR)):
+        if not FileOperations.validate_path_security(path, REPORTS_DIR):
             raise PermissionError("Access denied")
 
         # Delete from DB first
@@ -99,55 +100,27 @@ class ReportManager:
 
     async def _calculate_report_stats(self, path: str) -> Dict[str, Any]:
         """Calculate size and file count for a report directory."""
-        def _calc():
-            total_size = 0
+        total_size = await FileOperations.calc_directory_size(path)
+
+        # Count files separately
+        def _count_files():
             file_count = 0
-            for dirpath, dirnames, filenames in os.walk(path):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    if not os.path.islink(fp):
-                        try:
-                            total_size += os.path.getsize(fp)
-                            file_count += 1
-                        except OSError:
-                            pass
-            return {"size": get_size_format(total_size), "file_count": file_count}
+            for dirpath, _, filenames in os.walk(path):
+                file_count += len(filenames)
+            return file_count
 
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, _calc)
+        file_count = await loop.run_in_executor(None, _count_files)
+
+        return {"size": get_size_format(total_size), "file_count": file_count}
 
     async def _delete_path(self, path: str):
         """Asynchronously delete a file or directory."""
-        def _do_delete():
-            if os.path.isdir(path):
-                shutil.rmtree(path)
-            else:
-                os.remove(path)
-
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, _do_delete)
+        await FileOperations.delete_path(path)
 
     async def _cleanup_empty_parents(self, parent_path: str):
         """Recursively remove empty parent directories up to REPORTS_DIR."""
-        def _cleanup():
-            curr = os.path.abspath(parent_path)
-            root = os.path.abspath(REPORTS_DIR)
-            
-            # Don't delete upward beyond the reports root
-            while curr != root and curr.startswith(root):
-                if os.path.exists(curr) and os.path.isdir(curr) and not os.listdir(curr):
-                    try:
-                        os.rmdir(curr)
-                        logger.debug(f"Removed empty parent directory: {curr}")
-                        curr = os.path.dirname(curr)
-                    except Exception as e:
-                        logger.error(f"Failed to remove empty parent {curr}: {e}")
-                        break
-                else:
-                    break
-        
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, _cleanup)
+        await FileOperations.cleanup_empty_dirs({parent_path}, REPORTS_DIR)
 
     async def prepare_report_file(self, report_id: int, file_path: str) -> Dict[str, Any]:
         """
@@ -162,7 +135,7 @@ class ReportManager:
         full_path = os.path.join(report_root, file_path)
 
         # Security check: ensure the file is actually inside THIS report's directory
-        if not os.path.abspath(full_path).startswith(os.path.abspath(report_root)):
+        if not FileOperations.validate_path_security(full_path, report_root):
             raise PermissionError("Access denied")
 
         if not os.path.exists(full_path):
@@ -224,7 +197,7 @@ class ReportManager:
              raise FileNotFoundError("Report directory not found on disk")
 
         # Security check
-        if not os.path.abspath(path).startswith(os.path.abspath(REPORTS_DIR)):
+        if not FileOperations.validate_path_security(path, REPORTS_DIR):
             raise PermissionError("Access denied")
 
         def _zip():

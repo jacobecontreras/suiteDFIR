@@ -1,11 +1,11 @@
 
 import os
-import shutil
 import logging
 import asyncio
 from typing import List, Dict, Any, Optional
 from core.database import db_execute, db_fetch_one, db_fetch_all, db_execute_return_id
 from core.config import REPORTS_DIR, BACKUPS_DIR
+from utils.fs_ops import FileOperations
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class CaseManager:
         for path in backup_paths:
             if os.path.exists(path):
                 try:
-                    await self._delete_path(path)
+                    await FileOperations.delete_path(path)
                 except Exception as e:
                     logger.error(f"Error deleting backup {path}: {e}")
                     errors.append(f"Failed to delete backup {os.path.basename(path)}")
@@ -118,13 +118,13 @@ class CaseManager:
             if os.path.exists(path):
                 try:
                     parent_dirs.add(os.path.dirname(path))
-                    await self._delete_path(path)
+                    await FileOperations.delete_path(path)
                 except Exception as e:
                     logger.error(f"Error deleting report {path}: {e}")
                     errors.append(f"Failed to delete report {os.path.basename(path)}")
-        
+
         # Cleanup empty parent directories
-        await self._cleanup_empty_dirs(parent_dirs)
+        await FileOperations.cleanup_empty_dirs(parent_dirs, REPORTS_DIR)
 
         return {"success": True, "errors": errors}
 
@@ -144,7 +144,7 @@ class CaseManager:
                         abs_item_path = os.path.abspath(item_path)
                         if abs_item_path not in db_backup_paths:
                             logger.warning(f"Found orphaned backup: {abs_item_path}. Deleting...")
-                            await self._delete_path(abs_item_path)
+                            await FileOperations.delete_path(abs_item_path)
         except Exception as e:
             logger.error(f"Error during backup cleanup sweep: {e}")
 
@@ -170,50 +170,16 @@ class CaseManager:
                                         abs_report_path = os.path.abspath(report_path)
                                         if abs_report_path not in db_report_paths:
                                             logger.warning(f"Found orphaned report: {abs_report_path}. Deleting...")
-                                            await self._delete_path(abs_report_path)
+                                            await FileOperations.delete_path(abs_report_path)
                                             parent_dirs_to_check.add(case_path)
                                     
                 # 3. Cleanup empty parent (case) folders in reports
                 if parent_dirs_to_check:
-                    await self._cleanup_empty_dirs(parent_dirs_to_check)
+                    await FileOperations.cleanup_empty_dirs(parent_dirs_to_check, REPORTS_DIR)
         except Exception as e:
             logger.error(f"Error during report cleanup sweep: {e}")
-            
+
         logger.info("Orphaned file cleanup sweep complete.")
-
-    async def _delete_path(self, path: str):
-        """Asynchronously delete a file or directory."""
-        def _do_delete():
-            if os.path.isdir(path):
-                shutil.rmtree(path)
-            else:
-                os.remove(path)
-        
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, _do_delete)
-
-    async def _cleanup_empty_dirs(self, dirs: set):
-        """Clean up empty parent directories after report deletion."""
-        def _do_cleanup():
-            for parent_dir in dirs:
-                if not os.path.exists(parent_dir) or not os.path.isdir(parent_dir):
-                    continue
-                
-                try:
-                    # Safety check: ensure it's under REPORTS_DIR and not the root/tool dir
-                    rel = os.path.relpath(parent_dir, REPORTS_DIR)
-                    if rel == '.' or os.path.dirname(rel) == '':
-                        continue
-
-                    # Only delete if empty
-                    if not os.listdir(parent_dir):
-                        os.rmdir(parent_dir)
-                        logger.info(f"Removed empty directory: {parent_dir}")
-                except Exception as e:
-                    logger.error(f"Error cleaning up directory {parent_dir}: {e}")
-
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, _do_cleanup)
 
 # Global instance
 case_manager = CaseManager()

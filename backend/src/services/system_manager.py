@@ -10,6 +10,7 @@ from typing import Optional, List, Dict, Any
 from core.config import TOOLS_CONFIG
 from core.database import DB_PATH, db_fetch_all
 from core.state import available_modules, plugin_loaders
+from utils.fs_ops import FileOperations
 
 logger = logging.getLogger(__name__)
 
@@ -74,10 +75,10 @@ class SystemManager:
         
         # Calculate sizes asynchronously
         backups_size = sum([
-            await self._calc_directory_size(p) for p in backup_paths if os.path.exists(p)
+            await FileOperations.calc_directory_size(p) for p in backup_paths if os.path.exists(p)
         ])
         reports_size = sum([
-            await self._calc_directory_size(p) for p in report_paths if os.path.exists(p)
+            await FileOperations.calc_directory_size(p) for p in report_paths if os.path.exists(p)
         ])
         
         # System usage is everything else
@@ -247,30 +248,8 @@ class SystemManager:
                 return {"file_path": "", "success": False, "message": f"{dialog_type.capitalize()} dialog timed out"}
             except Exception as e:
                 return {"file_path": "", "success": False, "message": f"Failed to open {dialog_type} dialog: {str(e)}"}
-        
+
         return await loop.run_in_executor(None, _execute_dialog)
-
-    async def _calc_directory_size(self, path: str) -> int:
-        """Calculate total size of a directory asynchronously."""
-        loop = asyncio.get_running_loop()
-        
-        def _calc():
-            if os.path.isfile(path):
-                return os.path.getsize(path)
-            
-            total_size = 0
-            for dirpath, dirnames, filenames in os.walk(path):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    if not os.path.islink(fp):
-                        try:
-                            total_size += os.path.getsize(fp)
-                        except OSError:
-                            pass
-            return total_size
-        
-        return await loop.run_in_executor(None, _calc)
-
 
     async def shutdown_backend(self) -> Dict[str, str]:
         """Gracefully shutdown the backend server."""
