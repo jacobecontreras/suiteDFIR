@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
 import { API } from "@/lib/api"
 import { parseKmlText } from "@/lib/kmlUtils"
+import { useToast } from "@/hooks/use-toast"
+import {
+    MAX_SPATIAL_FEATURES,
+    MAX_SPATIAL_FILE_SIZE_BYTES,
+    MAX_SPATIAL_IMPORT_FILES,
+    MAX_SPATIAL_TOTAL_SIZE_BYTES,
+    formatBytes,
+} from "@/lib/spatialLimits"
 import JSZip from "jszip"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import type { GeoJsonObject } from "geojson"
@@ -18,6 +26,7 @@ interface ImportKMLModalProps {
 }
 
 export function ImportKMLModal({ open, onOpenChange, onImportTemporary, onImportPersistent }: ImportKMLModalProps) {
+    const { toast } = useToast()
     const [files, setFiles] = useState<File[]>([])
     const [isDragging, setIsDragging] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
@@ -47,14 +56,45 @@ export function ImportKMLModal({ open, onOpenChange, onImportTemporary, onImport
     }
 
     const validateAndSetFiles = (selectedFiles: File[]) => {
+        if (files.length >= MAX_SPATIAL_IMPORT_FILES) {
+            toast({
+                variant: "destructive",
+                title: "Import limit reached",
+                description: `You can queue up to ${MAX_SPATIAL_IMPORT_FILES} spatial files at once.`,
+            })
+            return
+        }
+
         const validExtensions = ['.kml', '.kmz']
         const validFiles = selectedFiles.filter(file => {
             const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
             return validExtensions.includes(ext)
         })
 
-        if (validFiles.length > 0) {
-            setFiles(prev => [...prev, ...validFiles])
+        const oversizeFile = validFiles.find(file => file.size > MAX_SPATIAL_FILE_SIZE_BYTES)
+        if (oversizeFile) {
+            toast({
+                variant: "destructive",
+                title: "File too large",
+                description: `${oversizeFile.name} exceeds the ${formatBytes(MAX_SPATIAL_FILE_SIZE_BYTES)} import limit.`,
+            })
+            return
+        }
+
+        const availableSlots = MAX_SPATIAL_IMPORT_FILES - files.length
+        const nextFiles = validFiles.slice(0, availableSlots)
+        const totalSize = [...files, ...nextFiles].reduce((sum, file) => sum + file.size, 0)
+        if (totalSize > MAX_SPATIAL_TOTAL_SIZE_BYTES) {
+            toast({
+                variant: "destructive",
+                title: "Import queue too large",
+                description: `Queued spatial files cannot exceed ${formatBytes(MAX_SPATIAL_TOTAL_SIZE_BYTES)} total.`,
+            })
+            return
+        }
+
+        if (nextFiles.length > 0) {
+            setFiles(prev => [...prev, ...nextFiles])
         }
         if (validFiles.length !== selectedFiles.length) {
             console.warn(`${selectedFiles.length - validFiles.length} file(s) skipped due to invalid type`)
@@ -86,11 +126,20 @@ export function ImportKMLModal({ open, onOpenChange, onImportTemporary, onImport
                 }
 
                 const geojson = parseKmlText(kmlText)
+                const featureCount = 'features' in geojson && Array.isArray(geojson.features) ? geojson.features.length : 0
+                if (featureCount > MAX_SPATIAL_FEATURES) {
+                    throw new Error(`${file.name} has too many features to load safely`)
+                }
                 onImportTemporary(geojson, file.name)
             }
             resetAndClose()
         } catch (error) {
             console.error("Failed to parse file:", error)
+            toast({
+                variant: "destructive",
+                title: "Import failed",
+                description: error instanceof Error ? error.message : "Failed to parse the selected spatial file.",
+            })
         } finally {
             setIsProcessing(false)
         }
@@ -112,7 +161,8 @@ export function ImportKMLModal({ open, onOpenChange, onImportTemporary, onImport
                 })
 
                 if (!res.ok) {
-                    console.error(`Upload failed for ${file.name}`)
+                    const errorData = await res.json().catch(() => null)
+                    throw new Error(errorData?.detail || `Upload failed for ${file.name}`)
                 }
             }
 
@@ -120,6 +170,11 @@ export function ImportKMLModal({ open, onOpenChange, onImportTemporary, onImport
             resetAndClose()
         } catch (error) {
             console.error("Failed to save files:", error)
+            toast({
+                variant: "destructive",
+                title: "Import failed",
+                description: error instanceof Error ? error.message : "Failed to save the selected spatial file.",
+            })
         } finally {
             setIsProcessing(false)
         }
