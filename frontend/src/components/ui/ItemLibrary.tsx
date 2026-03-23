@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { Children, ReactNode } from 'react';
 
 interface ItemLibraryProps {
     /** Section title shown in the header bar. */
@@ -7,6 +7,8 @@ interface ItemLibraryProps {
     phantomCard?: ReactNode;
     /** The rendered LibraryCard elements. */
     children?: ReactNode;
+    /** Minimal text shown when the library has no items. */
+    emptyMessage?: string;
 }
 
 /**
@@ -17,18 +19,27 @@ interface ItemLibraryProps {
 export function ItemLibrary({
     title = 'Library',
     phantomCard,
-    children
+    children,
+    emptyMessage = 'No items yet.'
 }: ItemLibraryProps) {
+    const hasContent = Boolean(phantomCard) || Children.count(children) > 0;
+
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-[#171717] border border-[#333333] rounded-lg overflow-hidden animate-in fade-in duration-500">
             <div className="px-4 py-2 border-b border-[#333333] bg-[#1A1A1A]">
                 <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">{title}</h3>
             </div>
             <div className="flex-1 flex flex-col p-0 min-h-0 overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                    {phantomCard}
-                    {children}
-                </div>
+                {hasContent ? (
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                        {phantomCard}
+                        {children}
+                    </div>
+                ) : (
+                    <div className="flex-1 flex items-center justify-center px-4">
+                        <p className="text-[11px] text-gray-500 uppercase tracking-wider text-center">{emptyMessage}</p>
+                    </div>
+                )}
             </div>
         </div>
     );

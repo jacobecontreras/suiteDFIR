@@ -523,6 +523,7 @@ export default function ExtractionPage({ type, actionSlot }: ExtractionPageProps
                     {/* Backup Library - Bottom 1/3 */}
                     <ItemLibrary
                         title="Backup Library"
+                        emptyMessage="No backups yet."
                     >
                         {platformBackups.filter(b => b.status !== 'cancelled').map((backup) => (
                             (() => {

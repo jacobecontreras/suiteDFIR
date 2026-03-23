@@ -10,7 +10,6 @@ import {
     Calendar,
     Trash2,
     Edit2,
-    Settings,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -167,15 +166,6 @@ export default function CasesPage() {
                     >
                         <Plus size={14} />
                         New Case
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => navigate('/settings')}
-                        className="text-gray-400 hover:text-white h-8 w-8 p-0"
-                        title="Settings"
-                    >
-                        <Settings size={16} />
                     </Button>
                 </div>
             </div>
