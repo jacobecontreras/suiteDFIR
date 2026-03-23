@@ -36,11 +36,8 @@ class ReportManager:
 
             try:
                 stats = await self._calculate_report_stats(path)
-                
-                # Calculate relative path for URL
-                rel_path = os.path.relpath(path, REPORTS_DIR)
-                # Sanitize path to prevent directory traversal attacks
-                safe_rel_path = rel_path.replace('..', '').replace('\\', '/')
+
+                # Calculate URL for the report
                 url = f"/api/reports/{row['id']}/view/index.html"
 
                 reports.append({
@@ -100,19 +97,8 @@ class ReportManager:
 
     async def _calculate_report_stats(self, path: str) -> Dict[str, Any]:
         """Calculate size and file count for a report directory."""
-        total_size = await FileOperations.calc_directory_size(path)
-
-        # Count files separately
-        def _count_files():
-            file_count = 0
-            for dirpath, _, filenames in os.walk(path):
-                file_count += len(filenames)
-            return file_count
-
-        loop = asyncio.get_running_loop()
-        file_count = await loop.run_in_executor(None, _count_files)
-
-        return {"size": get_size_format(total_size), "file_count": file_count}
+        stats = await FileOperations.calc_directory_stats(path)
+        return {"size": get_size_format(stats['size']), "file_count": stats['file_count']}
 
     async def _delete_path(self, path: str):
         """Asynchronously delete a file or directory."""
@@ -120,7 +106,7 @@ class ReportManager:
 
     async def _cleanup_empty_parents(self, parent_path: str):
         """Recursively remove empty parent directories up to REPORTS_DIR."""
-        await FileOperations.cleanup_empty_dirs({parent_path}, REPORTS_DIR)
+        await FileOperations.cleanup_empty_dirs_recursive({parent_path}, REPORTS_DIR)
 
     async def prepare_report_file(self, report_id: int, file_path: str) -> Dict[str, Any]:
         """

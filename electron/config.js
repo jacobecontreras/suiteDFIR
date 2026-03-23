@@ -5,10 +5,40 @@
 const path = require('path');
 const isDev = require('electron-is-dev');
 
+/**
+ * Get and validate the development backend port from environment variable.
+ * Falls back to 8000 if invalid or not specified.
+ * @returns {number} Valid port number between 1 and 65535
+ */
+function getValidDevPort() {
+    const envPort = process.env.SUITEDFIR_DEV_PORT;
+
+    // If not set, use default
+    if (!envPort) {
+        return 8000;
+    }
+
+    // Validate: must be numeric string only (no "8000abc" allowed)
+    if (!/^\d+$/.test(envPort)) {
+        console.warn(`Invalid SUITEDFIR_DEV_PORT: "${envPort}". Must be numeric. Using default 8000.`);
+        return 8000;
+    }
+
+    const port = Number(envPort);
+
+    // Validate: must be in valid port range
+    if (port < 1 || port > 65535) {
+        console.warn(`Invalid SUITEDFIR_DEV_PORT: "${envPort}". Must be between 1 and 65535. Using default 8000.`);
+        return 8000;
+    }
+
+    return port;
+}
+
 // Backend configuration - dynamic port allocation
 const BACKEND_PREFERRED_PORT = 8000;
 const BACKEND_PORT_RANGE = [8000, 8100]; // Range to search for available port
-const BACKEND_DEV_PORT = parseInt(process.env.SUITEDFIR_DEV_PORT || '8000', 10);
+const BACKEND_DEV_PORT = getValidDevPort();
 
 // Python executable path
 // In production, use bundled executable; in development, use venv Python

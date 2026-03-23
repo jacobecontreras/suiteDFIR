@@ -14,6 +14,8 @@ const windows = require('./windows');
 
 let pythonProcess = null;
 let allocatedPort = null;
+let backendStartupFailed = false;
+let backendReady = false;
 
 /**
  * Get the allocated backend port
@@ -79,6 +81,13 @@ async function waitForBackend() {
     logger.info('Starting backend health checks...');
 
     for (let attempt = 1; attempt <= config.MAX_HEALTH_CHECK_RETRIES; attempt++) {
+        // Check if backend process died during startup
+        if (backendStartupFailed) {
+            logger.error('Backend process exited during startup');
+            windows.updateSplashStatus('Backend startup failed');
+            return false;
+        }
+
         const isHealthy = await checkHealth();
 
         if (isHealthy) {
@@ -106,6 +115,14 @@ async function continueWaitingForBackend(maxWaitTime = 300000) {
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxWaitTime) {
+        // Check if backend process died during extended wait
+        if (backendStartupFailed) {
+            logger.error('Backend process exited during extended wait');
+            windows.updateSplashStatus('Backend startup failed');
+            windows.closeSplashWindow();
+            return false;
+        }
+
         await new Promise(resolve => setTimeout(resolve, config.HEALTH_CHECK_INTERVAL));
 
         const isHealthy = await checkHealth();
@@ -120,6 +137,8 @@ async function continueWaitingForBackend(maxWaitTime = 300000) {
     }
 
     logger.error('Backend failed to start within maximum wait time');
+    windows.updateSplashStatus('Backend startup timeout');
+    windows.closeSplashWindow();
     return false;
 }
 
@@ -202,6 +221,12 @@ function logBackendDiagnostics() {
  * @returns {Promise<boolean>} true if backend started successfully
  */
 async function start() {
+    // Reset state for a new startup attempt
+    pythonProcess = null;
+    allocatedPort = null;
+    backendStartupFailed = false;
+    backendReady = false;
+
     const executableExists = logBackendDiagnostics();
 
     // Show splash screen
@@ -284,15 +309,24 @@ async function start() {
         pythonProcess.on('error', (error) => {
             logger.error('Failed to start backend process:', error.message);
             logger.error('Error code:', error.code);
+            backendStartupFailed = true;
             windows.updateSplashStatus('Failed to start application');
         });
 
         pythonProcess.on('close', (code, signal) => {
             logger.info(`Backend process exited with code ${code}, signal ${signal}`);
+            // Mark as failed if backend hasn't completed startup successfully
+            if (!backendReady) {
+                backendStartupFailed = true;
+            }
         });
 
         pythonProcess.on('exit', (code, signal) => {
             logger.info(`Backend process exit event: code=${code}, signal=${signal}`);
+            // Mark as failed if backend hasn't completed startup successfully
+            if (!backendReady) {
+                backendStartupFailed = true;
+            }
         });
     } catch (error) {
         logger.error('Exception spawning backend:', error.message);
@@ -309,6 +343,12 @@ async function start() {
     } else {
         let portCaptureAttempts = 0;
         while (!allocatedPort && portCaptureAttempts < 30) {
+            // Check if backend process died during port capture
+            if (backendStartupFailed) {
+                logger.error('Backend process exited during port capture');
+                windows.updateSplashStatus('Backend startup failed');
+                return false;
+            }
             await new Promise(resolve => setTimeout(resolve, 500));
             portCaptureAttempts++;
         }
@@ -324,14 +364,23 @@ async function start() {
     const isHealthy = await waitForBackend();
 
     if (isHealthy) {
+        backendReady = true;
         logger.info('Backend is ready, starting frontend...');
         windows.closeSplashWindow();
         windows.createMainWindow();
         return true;
     }
 
-    // Health check failed - show error dialog
-    logger.warn('Backend health check failed, showing dialog');
+    // If backend process died during startup, quit immediately without dialog
+    if (backendStartupFailed) {
+        logger.error('Backend process failed to start');
+        windows.updateSplashStatus('Backend startup failed');
+        windows.closeSplashWindow();
+        return false;
+    }
+
+    // Health check timed out - show error dialog
+    logger.warn('Backend health check timed out, showing dialog');
     windows.updateSplashStatus('Taking longer than expected...');
 
     const shouldKeepWaiting = await windows.showBackendErrorDialog();
@@ -339,8 +388,12 @@ async function start() {
     if (shouldKeepWaiting) {
         logger.info('User chose to keep waiting');
         windows.updateSplashStatus('Continuing to initialize...');
-        continueWaitingForBackend();
-        return true; // Don't block app lifecycle
+        // Await the result so we can handle timeout/failure
+        const eventuallyReady = await continueWaitingForBackend();
+        if (eventuallyReady) {
+            backendReady = true;
+        }
+        return eventuallyReady;
     }
 
     // User chose to quit

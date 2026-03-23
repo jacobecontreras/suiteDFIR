@@ -11,7 +11,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Set, Union
+from typing import Set, Union, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,51 @@ class FileOperations:
         return await loop.run_in_executor(None, _calc)
 
     @staticmethod
+    async def calc_directory_stats(path: Union[str, Path]) -> Dict[str, int]:
+        """
+        Calculate total size and file count for a directory asynchronously.
+
+        Returns {'size': bytes, 'file_count': number of non-symlink files}.
+
+        Both calculations use the same traversal for consistency.
+        Symlinks are excluded from both size and count, matching the behavior
+        of calc_directory_size.
+
+        Used by:
+        - report_manager.py:_calculate_report_stats
+        """
+        path = Path(path)
+
+        def _calc():
+            if path.is_file():
+                # For single file: return size if not symlink, 0 if symlink
+                if not os.path.islink(path):
+                    try:
+                        return {'size': path.stat().st_size, 'file_count': 1}
+                    except OSError:
+                        return {'size': 0, 'file_count': 0}
+                return {'size': 0, 'file_count': 0}
+
+            # For directory: traverse and count
+            total_size = 0
+            file_count = 0
+            for dirpath, _, filenames in os.walk(path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    # Skip symlinks for both size and count
+                    if not os.path.islink(fp):
+                        try:
+                            total_size += os.path.getsize(fp)
+                            file_count += 1
+                        except OSError:
+                            # File couldn't be read - skip it
+                            pass
+            return {'size': total_size, 'file_count': file_count}
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _calc)
+
+    @staticmethod
     async def cleanup_empty_dirs(
         parent_dirs: Set[Union[str, Path]],
         root_dir: Union[str, Path]
@@ -112,6 +157,66 @@ class FileOperations:
                     logger.warning(f"Skipping directory outside root: {parent}")
                 except Exception as e:
                     logger.error(f"Error cleaning up directory {parent}: {e}")
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _cleanup)
+
+    @staticmethod
+    async def cleanup_empty_dirs_recursive(
+        parent_dirs: Set[Union[str, Path]],
+        root_dir: Union[str, Path]
+    ) -> None:
+        """
+        Recursively remove empty parent directories, walking upward until root_dir.
+
+        Unlike cleanup_empty_dirs, this will delete empty directories all the way
+        up to but not including root_dir, including direct children of root_dir.
+
+        This is specifically for report deletion where we want to clean up the
+        entire empty case folder structure.
+
+        Used by:
+        - report_manager.py:_cleanup_empty_parents
+        """
+        root_dir = Path(root_dir).resolve()
+
+        def _cleanup():
+            for parent_dir in parent_dirs:
+                current = Path(parent_dir)
+
+                if not current.exists() or not current.is_dir():
+                    continue
+
+                try:
+                    # Walk upward, removing empty dirs until we hit root_dir
+                    while current != root_dir and current.exists():
+                        current_resolved = current.resolve()
+
+                        # Safety check: ensure we're still under root
+                        try:
+                            current_resolved.relative_to(root_dir)
+                        except ValueError:
+                            # Path is not relative to root_dir - stop
+                            break
+
+                        # Don't delete root_dir itself
+                        if current_resolved == root_dir:
+                            break
+
+                        # Only delete if empty
+                        if not os.listdir(current):
+                            removed_dir = current
+                            os.rmdir(current)
+                            logger.info(f"Removed empty directory: {removed_dir}")
+
+                            # Move to parent and continue
+                            current = current.parent
+                        else:
+                            # Directory not empty - stop walking up
+                            break
+
+                except Exception as e:
+                    logger.error(f"Error cleaning up directory {parent_dir}: {e}")
 
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, _cleanup)
