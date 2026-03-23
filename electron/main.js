@@ -4,10 +4,12 @@
  * This is the main orchestrator that coordinates all modules.
  */
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, session } = require('electron');
 const backend = require('./backend');
 const protocol = require('./protocol');
 const logger = require('./logger');
+
+const OSM_USER_AGENT = 'suiteDFIR/1.0 (+https://github.com/jacobcontreras/suiteDFIR)';
 
 // IPC handler for frontend to get dynamic backend URL
 ipcMain.handle('get-backend-url', () => {
@@ -43,6 +45,27 @@ protocol.registerScheme();
 
 logger.info('Setting up app.whenReady...');
 
+function configureOsmRequestHeaders() {
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    try {
+      const url = new URL(details.url);
+      const hostname = url.hostname.toLowerCase();
+      const isOsmHost =
+        hostname === 'tile.openstreetmap.org' ||
+        hostname === 'nominatim.openstreetmap.org' ||
+        hostname.endsWith('.openstreetmap.org');
+
+      if (isOsmHost) {
+        details.requestHeaders['User-Agent'] = OSM_USER_AGENT;
+      }
+    } catch (error) {
+      logger.warn('Failed to inspect outbound request URL:', error.message);
+    }
+
+    callback({ requestHeaders: details.requestHeaders });
+  });
+}
+
 app.whenReady().then(async () => {
   logger.info('app.whenReady callback fired');
 
@@ -54,6 +77,7 @@ app.whenReady().then(async () => {
     logger.info('Calling logger.init()...');
     const logPath = logger.init();
     logger.info('Logger initialized, log file:', logPath);
+    configureOsmRequestHeaders();
     logger.info('App is ready, starting backend...');
 
     // Start backend (handles splash, health checks, and main window creation)
