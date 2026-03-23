@@ -346,6 +346,15 @@ class TileSessionRequest(BaseModel):
     layerTypes: Optional[List[str]] = None
     overlay: Optional[bool] = None
 
+
+class TileViewportRequest(TileSessionRequest):
+    """Request body for retrieving Google Maps viewport attribution."""
+    zoom: int
+    north: float
+    south: float
+    east: float
+    west: float
+
 # SPATIAL RESPONSE MODELS
 
 class KmlFileItem(BaseModel):
@@ -408,3 +417,8 @@ class TileSessionStatusResponse(BaseModel):
     cachedSessions: int
     maxSessions: int
     sessions: Dict[str, TileSessionStatus]
+
+
+class TileViewportResponse(BaseModel):
+    """Viewport attribution for the currently displayed Google tiles."""
+    copyright: str

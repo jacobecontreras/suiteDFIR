@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/Input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select"
 import { API } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { useSpatial } from "@/context/SpatialContext"
 
 const DEFAULT_NOMINATIM_URL = "https://nominatim.openstreetmap.org"
 const DEFAULT_NOMINATIM_USER_AGENT = "suiteDFIR/1.0 (+https://github.com/jacobcontreras/suiteDFIR)"
 
 export default function SpatialSettingsPanel() {
     const { toast } = useToast()
+    const { tileSource } = useSpatial()
     const panelRef = useRef<HTMLDivElement>(null)
     const triggerRef = useRef<HTMLButtonElement>(null)
     const [isOpen, setIsOpen] = useState(false)
@@ -25,6 +27,7 @@ export default function SpatialSettingsPanel() {
     const [nominatimUserAgent, setNominatimUserAgent] = useState(DEFAULT_NOMINATIM_USER_AGENT)
 
     const hasGoogleKeyConfigured = apiKey.trim().length > 0
+    const effectiveProvider = tileSource === "google" ? geocoderProvider : "nominatim"
 
     useEffect(() => {
         if (!isOpen) return
@@ -292,6 +295,11 @@ export default function SpatialSettingsPanel() {
                                                 Add and verify a Google Maps API key above to enable Google geocoding.
                                             </p>
                                         )}
+                                        <div className="rounded-md border border-[#2A2A2A] bg-[#101010] px-3 py-2 text-[12px] text-gray-400">
+                                            {tileSource === "google"
+                                                ? `Current map uses ${effectiveProvider === "google" ? "Google Maps geocoding" : "Nominatim geocoding"}.`
+                                                : "Current map uses Nominatim geocoding. Google geocoding and autocomplete are restricted to the Google basemap."}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">
@@ -321,6 +329,36 @@ export default function SpatialSettingsPanel() {
                                         <p className="text-[12px] text-gray-500">
                                             This app uses explicit submit-based search only. Public Nominatim autocomplete is disabled to comply with OSM policy.
                                         </p>
+                                    </div>
+
+                                    <div className="space-y-2 border-t border-[#2A2A2A] pt-4">
+                                        <h4 className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Google Terms</h4>
+                                        <div className="space-y-1 text-[12px]">
+                                            <a
+                                                href="https://cloud.google.com/maps-platform/terms"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-gray-400 transition-colors hover:text-white"
+                                            >
+                                                Google Maps Platform Terms of Service
+                                            </a>
+                                            <a
+                                                href="https://cloud.google.com/maps-platform/terms/maps-service-terms"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="block text-gray-400 transition-colors hover:text-white"
+                                            >
+                                                Google Maps Platform Service Specific Terms
+                                            </a>
+                                            <a
+                                                href="https://policies.google.com/privacy"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="block text-gray-400 transition-colors hover:text-white"
+                                            >
+                                                Google Privacy Policy
+                                            </a>
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center justify-between gap-3 pt-1">

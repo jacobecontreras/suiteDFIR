@@ -132,11 +132,11 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
 
     useEffect(() => {
         const trimmedQuery = searchQuery.trim()
-        if (trimmedQuery.length < 3) {
+        if (currentTileSource !== "google" || trimmedQuery.length < 3) {
             setSuggestions([])
             setShowSuggestions(false)
             setHighlightedSuggestionIndex(-1)
-            if (!trimmedQuery) {
+            if (!trimmedQuery || currentTileSource !== "google") {
                 autocompleteSessionRef.current = null
             }
             return
@@ -149,7 +149,11 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
         const timeoutId = window.setTimeout(async () => {
             setIsLoadingSuggestions(true)
             try {
-                const res = await fetch(API.path(`/spatial/autocomplete?q=${encodeURIComponent(trimmedQuery)}&session_token=${encodeURIComponent(sessionToken)}`))
+                const res = await fetch(
+                    API.path(
+                        `/spatial/autocomplete?q=${encodeURIComponent(trimmedQuery)}&session_token=${encodeURIComponent(sessionToken)}&basemap=${encodeURIComponent(currentTileSource)}`
+                    )
+                )
                 if (!res.ok) {
                     throw new Error("Autocomplete request failed")
                 }
@@ -178,7 +182,7 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
             cancelled = true
             window.clearTimeout(timeoutId)
         }
-    }, [searchQuery])
+    }, [currentTileSource, searchQuery])
 
     const fetchKmlFiles = React.useCallback(async () => {
         try {
@@ -435,7 +439,9 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
     const runSearch = async (query: string) => {
         setIsSearching(true)
         try {
-            const res = await fetch(API.path(`/spatial/search?q=${encodeURIComponent(query)}`))
+            const res = await fetch(
+                API.path(`/spatial/search?q=${encodeURIComponent(query)}&basemap=${encodeURIComponent(currentTileSource)}`)
+            )
             if (res.ok) {
                 const data = await res.json()
                 if (data && data.length > 0) {
@@ -580,8 +586,11 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
                                     </button>
                                 ))}
                             </div>
-                            <div className="border-t border-[#2A2A2A] px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500">
-                                Suggestions powered by Google
+                            <div
+                                className="border-t border-[#2A2A2A] px-3 py-1.5 font-normal text-[12px] text-[#5E5E5E]"
+                                translate="no"
+                            >
+                                Google Maps
                             </div>
                         </div>
                     )}

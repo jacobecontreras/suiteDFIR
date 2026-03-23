@@ -117,6 +117,58 @@ function AutoFitBounds({ data, path }: { data: GeoJsonObject | null, path?: stri
     return null
 }
 
+interface GoogleViewportState {
+    zoom: number
+    north: number
+    south: number
+    east: number
+    west: number
+}
+
+function GoogleViewportReporter({ onChange }: { onChange: (viewport: GoogleViewportState) => void }) {
+    const map = useMap()
+
+    const reportViewport = useCallback(() => {
+        const bounds = map.getBounds()
+        onChange({
+            zoom: map.getZoom(),
+            north: bounds.getNorth(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            west: bounds.getWest(),
+        })
+    }, [map, onChange])
+
+    useEffect(() => {
+        reportViewport()
+    }, [reportViewport])
+
+    useMapEvents({
+        moveend: reportViewport,
+        zoomend: reportViewport,
+    })
+
+    return null
+}
+
+function GoogleAttributionControl({ copyright }: { copyright: string | null }) {
+    const map = useMap()
+
+    useEffect(() => {
+        const attributionControl = map.attributionControl
+        if (!attributionControl || !copyright) {
+            return
+        }
+
+        attributionControl.addAttribution(copyright)
+        return () => {
+            attributionControl.removeAttribution(copyright)
+        }
+    }, [copyright, map])
+
+    return null
+}
+
 
 
 export default function SpatialMap() {
@@ -243,6 +295,8 @@ export default function SpatialMap() {
         session: string; key: string; mapType: string; expiry: number
     } | null>(null)
     const [lastFetchedLayer, setLastFetchedLayer] = useState<string | null>(null)
+    const [googleViewport, setGoogleViewport] = useState<GoogleViewportState | null>(null)
+    const [googleAttribution, setGoogleAttribution] = useState<string | null>(null)
 
     // Map app layer names to Google Maps Tile API session params
     const getSessionParams = useCallback((appLayer: string) => {
@@ -322,6 +376,49 @@ export default function SpatialMap() {
         }
     }, [layer, getSessionParams])
 
+    useEffect(() => {
+        if (tileSource !== 'google') {
+            setGoogleAttribution(null)
+            return
+        }
+        if (!tileSession || !googleViewport) {
+            return
+        }
+
+        let cancelled = false
+        const fetchAttribution = async () => {
+            try {
+                const params = getSessionParams(layer)
+                const res = await fetch(API.path('/spatial/tile-attribution'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...params,
+                        ...googleViewport,
+                    }),
+                })
+                if (!res.ok) {
+                    throw new Error('Tile attribution request failed')
+                }
+
+                const data = await res.json()
+                if (!cancelled) {
+                    setGoogleAttribution(data.copyright || null)
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Failed to fetch Google tile attribution:', error)
+                    setGoogleAttribution(null)
+                }
+            }
+        }
+
+        void fetchAttribution()
+        return () => {
+            cancelled = true
+        }
+    }, [getSessionParams, googleViewport, layer, tileSession, tileSource])
+
     const getTileLayers = () => {
         // OSM tiles (free, no API key required)
         if (tileSource === 'osm') {
@@ -342,7 +439,7 @@ export default function SpatialMap() {
         return (
             <TileLayer
                 key={tileSession.session}
-                attribution='&copy; Google Maps'
+                attribution='<span translate="no">Google Maps</span>'
                 url={tileUrl}
                 maxZoom={22}
                 eventHandlers={{
@@ -396,6 +493,12 @@ export default function SpatialMap() {
                 }} />
                 <MapUpdater center={center} zoom={zoom} />
                 <AutoFitBounds data={geoJsonData} />
+                {tileSource === 'google' && (
+                    <>
+                        <GoogleViewportReporter onChange={setGoogleViewport} />
+                        <GoogleAttributionControl copyright={googleAttribution} />
+                    </>
+                )}
 
                 {searchPin && <Marker position={searchPin} />}
 

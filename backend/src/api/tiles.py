@@ -11,6 +11,8 @@ from core.models import (
     TileSessionRequest,
     TileSessionResponse,
     TileSessionStatusResponse,
+    TileViewportRequest,
+    TileViewportResponse,
 )
 from services.tile_manager import tile_manager
 
@@ -32,9 +34,10 @@ atexit.register(_sync_close_on_exit)
 
 @router.post("/tile-session", response_model=TileSessionResponse)
 async def create_tile_session(body: TileSessionRequest):
-    """Proxy Google Maps Tile API session creation. Keeps API key server-side.
+    """Create a Google tile session for the renderer.
 
-    Uses in-memory LRU caching with server-provided expiry for efficiency.
+    The browser still needs the restricted API key for Google tile requests.
+    Session creation and caching remain server-managed.
     """
     return await tile_manager.create_tile_session(body)
 
@@ -52,12 +55,18 @@ async def get_tile_session_status():
 
 
 @router.get("/search", response_model=List[GeocodeResult])
-async def search_location(q: str):
-    """Return explicit, submit-based geocoding results using the configured provider."""
-    return await tile_manager.search_location(q)
+async def search_location(q: str, basemap: str | None = None):
+    """Return explicit geocoding results using a basemap-compliant provider."""
+    return await tile_manager.search_location(q, basemap)
 
 
 @router.get("/autocomplete", response_model=List[PlaceSuggestion])
-async def autocomplete_location(q: str, session_token: str | None = None):
-    """Return Google Places autocomplete suggestions when Google geocoding is active."""
-    return await tile_manager.autocomplete_location(q, session_token)
+async def autocomplete_location(q: str, session_token: str | None = None, basemap: str | None = None):
+    """Return Google Places autocomplete suggestions only when a Google basemap is active."""
+    return await tile_manager.autocomplete_location(q, session_token, basemap)
+
+
+@router.post("/tile-attribution", response_model=TileViewportResponse)
+async def get_tile_attribution(body: TileViewportRequest):
+    """Return viewport-specific attribution for the active Google tiles."""
+    return TileViewportResponse.model_validate(await tile_manager.get_tile_attribution(body))

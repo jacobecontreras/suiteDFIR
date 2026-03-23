@@ -9,7 +9,7 @@ from typing import Dict, List, Literal, Optional
 import httpx
 from fastapi import HTTPException
 
-from core.models import GeocodeResult, PlaceSuggestion, TileSessionRequest
+from core.models import GeocodeResult, PlaceSuggestion, TileSessionRequest, TileViewportRequest
 from services.settings_manager import settings_manager
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ DEFAULT_GEOCODER_PROVIDER = "nominatim"
 MAX_SESSIONS = 10
 EXPIRY_SAFETY_BUFFER = 3600
 MAX_GEOCODE_RESULTS = 5
-QUERY_CACHE_TTL_SECONDS = 300
+NOMINATIM_QUERY_CACHE_TTL_SECONDS = 300
 MAX_QUERY_CACHE_ENTRIES = 100
 RATE_LIMIT_WINDOW_SECONDS = 60
 MAX_GEOCODE_REQUESTS = 20
@@ -143,7 +143,7 @@ class TileManager:
                 cache.popitem(last=False)
             cache[key] = CachedQueryResult(
                 value=value,
-                expiry=time.time() + QUERY_CACHE_TTL_SECONDS,
+                expiry=time.time() + NOMINATIM_QUERY_CACHE_TTL_SECONDS,
             )
             cache.move_to_end(key)
 
@@ -185,6 +185,12 @@ class TileManager:
         if configured in {"google", "nominatim"}:
             return configured
         return DEFAULT_GEOCODER_PROVIDER
+
+    async def _get_effective_geocoder_provider(self, basemap: Optional[str] = None) -> Literal["google", "nominatim"]:
+        configured = await self._get_geocoder_provider()
+        if basemap == "google":
+            return configured
+        return "nominatim" if configured == "google" else configured
 
     async def create_tile_session(self, request: TileSessionRequest) -> dict:
         """Create or return a cached Google Maps Tile session."""
@@ -311,16 +317,18 @@ class TileManager:
             "sessions": status,
         }
 
-    async def search_location(self, query: str) -> List[GeocodeResult]:
-        """Return geocoding results using the configured provider."""
+    async def search_location(self, query: str, basemap: Optional[str] = None) -> List[GeocodeResult]:
+        """Return geocoding results using a basemap-compliant provider."""
         self._check_rate_limit(self._geocode_request_times, MAX_GEOCODE_REQUESTS)
 
         cache_key = self._normalize_query(query)
-        cached = self._get_cached_query(self._geocode_cache, cache_key)
-        if cached is not None:
-            return cached
+        provider = await self._get_effective_geocoder_provider(basemap)
+        should_cache = provider == "nominatim"
+        if should_cache:
+            cached = self._get_cached_query(self._geocode_cache, cache_key)
+            if cached is not None:
+                return cached
 
-        provider = await self._get_geocoder_provider()
         api_key = await settings_manager.get_setting("google_maps_api_key")
 
         if provider == "google" and api_key:
@@ -330,26 +338,22 @@ class TileManager:
                 logger.warning("Google geocoder selected without API key; falling back to Nominatim")
             results = await self._nominatim_geocode(query)
 
-        self._set_cached_query(self._geocode_cache, cache_key, results)
+        if should_cache:
+            self._set_cached_query(self._geocode_cache, cache_key, results)
         return results
 
-    async def autocomplete_location(self, query: str, session_token: Optional[str] = None) -> List[PlaceSuggestion]:
+    async def autocomplete_location(self, query: str, session_token: Optional[str] = None, basemap: Optional[str] = None) -> List[PlaceSuggestion]:
         """Return autocomplete suggestions only for Google Places."""
         normalized_query = self._normalize_query(query)
         if len(normalized_query) < 3:
             return []
 
-        provider = await self._get_geocoder_provider()
+        provider = await self._get_effective_geocoder_provider(basemap)
         api_key = await settings_manager.get_setting("google_maps_api_key")
         if provider != "google" or not api_key:
             return []
 
         self._check_rate_limit(self._autocomplete_request_times, MAX_AUTOCOMPLETE_REQUESTS)
-
-        cache_key = f"autocomplete:{normalized_query}"
-        cached = self._get_cached_query(self._autocomplete_cache, cache_key)
-        if cached is not None:
-            return cached
 
         client = self.get_http_client()
         try:
@@ -401,8 +405,6 @@ class TileManager:
 
                 if len(results) >= MAX_GEOCODE_RESULTS:
                     break
-
-            self._set_cached_query(self._autocomplete_cache, cache_key, results)
             return results
         except httpx.HTTPStatusError as e:
             logger.error(f"Google Places Autocomplete API error: {e.response.status_code} - {e.response.text}")
@@ -410,6 +412,46 @@ class TileManager:
         except Exception as e:
             logger.error(f"Autocomplete proxy failed: {e}")
             return []
+
+    async def get_tile_attribution(self, request: TileViewportRequest) -> dict:
+        """Return the current Google Maps viewport attribution string."""
+        session = await self.create_tile_session(
+            TileSessionRequest(
+                mapType=request.mapType,
+                language=request.language,
+                region=request.region,
+                layerTypes=request.layerTypes,
+                overlay=request.overlay,
+            )
+        )
+        client = self.get_http_client()
+        try:
+            response = await client.get(
+                "https://tile.googleapis.com/tile/v1/viewport",
+                params={
+                    "session": session["session"],
+                    "key": session["key"],
+                    "zoom": request.zoom,
+                    "north": request.north,
+                    "south": request.south,
+                    "east": request.east,
+                    "west": request.west,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            copyright_text = data.get("copyright")
+            if not copyright_text:
+                raise HTTPException(status_code=502, detail="Google viewport attribution was empty")
+            return {"copyright": copyright_text}
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Google viewport attribution error: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(status_code=502, detail="Google viewport attribution failed")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Viewport attribution proxy failed: {e}")
+            raise HTTPException(status_code=500, detail="Viewport attribution failed")
 
     async def _google_geocode(self, query: str, api_key: str) -> List[GeocodeResult]:
         """Query Google Geocoding API."""
