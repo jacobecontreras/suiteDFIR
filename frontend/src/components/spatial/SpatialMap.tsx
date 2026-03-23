@@ -10,6 +10,8 @@ import { parseKmlText } from "@/lib/kmlUtils"
 import { onEachFeature } from "@/lib/mapUtils"
 import { useCase } from "@/context/CaseContext"
 import { useSpatial } from "@/context/SpatialContext"
+import { useToast } from "@/hooks/use-toast"
+import { MAX_SPATIAL_FEATURES } from "@/lib/spatialLimits"
 
 // Fix for default marker icons in Next.js
 const iconUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png'
@@ -122,6 +124,7 @@ export default function SpatialMap() {
         center, setCenter,
         zoom, setZoom,
         layer, setLayer,
+        tileSource, setTileSource,
         selectedKmlsPaths, setSelectedKmlsPaths,
         geoJsonData, geoJsonDataKey, setGeoJsonData,
         searchPin, setSearchPin,
@@ -129,13 +132,28 @@ export default function SpatialMap() {
     } = useSpatial()
 
     const [browsedKmls, setBrowsedKmls] = useState<Record<string, GeoJsonObject>>({})
+    const [hasGoogleApiKey, setHasGoogleApiKey] = useState<boolean>(false)
     const { selectedCaseId } = useCase()
+    const { toast } = useToast()
 
     // Keep a ref to browsedKmls to avoid dependency cycle in the effect
     const browsedKmlsRef = useRef(browsedKmls);
     useEffect(() => {
         browsedKmlsRef.current = browsedKmls;
     }, [browsedKmls]);
+
+    // Check if Google API key is configured
+    useEffect(() => {
+        const checkApiKey = async () => {
+            try {
+                const res = await fetch(API.path("/settings/google_maps_api_key"))
+                setHasGoogleApiKey(res.ok && (await res.json()).value !== '')
+            } catch {
+                setHasGoogleApiKey(false)
+            }
+        }
+        checkApiKey()
+    }, [])
 
     // Callback to add KML data by URL (used by MapControls for temporary files)
     const addBrowsedKml = useCallback((url: string, data: GeoJsonObject) => {
@@ -169,13 +187,32 @@ export default function SpatialMap() {
                     const text = await res.text()
                     const geojson = parseKmlText(text) as GeoJsonObject & { features: unknown[] }
 
+                    if (Array.isArray(geojson.features) && geojson.features.length > MAX_SPATIAL_FEATURES) {
+                        setSelectedKmlsPaths(prev => prev.filter(selectedPath => selectedPath !== path))
+                        toast({
+                            variant: "destructive",
+                            title: "Spatial layer too large",
+                            description: `This layer exceeds the safe limit of ${MAX_SPATIAL_FEATURES.toLocaleString()} features.`,
+                        })
+                        return
+                    }
+
                     setBrowsedKmls(prev => ({
                         ...prev,
                         [path]: geojson
                     }))
+                } else {
+                    const errorData = await res.json().catch(() => null)
+                    throw new Error(errorData?.detail || "Failed to load KML")
                 }
             } catch (error) {
                 console.error("Failed to load KML:", error)
+                toast({
+                    variant: "destructive",
+                    title: "Spatial layer failed to load",
+                    description: error instanceof Error ? error.message : "Failed to load the selected KML/KMZ file.",
+                })
+                setSelectedKmlsPaths(prev => prev.filter(selectedPath => selectedPath !== path))
             }
         }
 
@@ -221,7 +258,13 @@ export default function SpatialMap() {
     }, [])
 
     // Fetch a tile session only when layer changes (backend handles caching)
+    // Only fetch if tileSource is 'google'
     useEffect(() => {
+        // Skip if not using Google tiles
+        if (tileSource !== 'google') {
+            return
+        }
+
         // Skip if layer hasn't actually changed
         if (lastFetchedLayer === layer && tileSession) {
             return
@@ -245,6 +288,15 @@ export default function SpatialMap() {
                         expiry: data.expiry
                     })
                     setLastFetchedLayer(layer)
+                } else if (res.status === 400 && !cancelled) {
+                    // Google API key not configured - show toast
+                    toast({
+                        variant: "destructive",
+                        title: "Google Maps API Key Required",
+                        description: "Open the map settings panel to add a Google Maps API key and use Google layers.",
+                    })
+                    // Fall back to OSM
+                    setTileSource('osm')
                 }
             } catch (err) {
                 console.error('Failed to fetch tile session:', err)
@@ -252,7 +304,7 @@ export default function SpatialMap() {
         }
         fetchSession()
         return () => { cancelled = true }
-    }, [layer, getSessionParams, lastFetchedLayer, tileSession])
+    }, [layer, getSessionParams, lastFetchedLayer, tileSession, tileSource, setTileSource, toast])
 
     // Invalidate session on tile errors (for error recovery)
     const invalidateTileSession = useCallback(async () => {
@@ -271,6 +323,18 @@ export default function SpatialMap() {
     }, [layer, getSessionParams])
 
     const getTileLayers = () => {
+        // OSM tiles (free, no API key required)
+        if (tileSource === 'osm') {
+            return (
+                <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    maxZoom={19}
+                />
+            )
+        }
+
+        // Google tiles (require API key and session)
         if (!tileSession) return null
 
         const tileUrl = `https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?session=${tileSession.session}&key=${tileSession.key}`
@@ -304,11 +368,18 @@ export default function SpatialMap() {
             <MapControls
                 onSearch={handleSearch}
                 onLayerChange={setLayer}
+                onTileSourceChange={(source, googleLayer) => {
+                    if (source === 'google' && googleLayer) {
+                        setLayer(googleLayer)
+                    }
+                }}
                 onDataUpload={setGeoJsonData}
                 onAddKmlData={addBrowsedKml}
                 onRemoveKmlData={removeBrowsedKml}
                 currentLayer={layer}
+                currentTileSource={tileSource}
                 selectedCaseId={selectedCaseId}
+                hasGoogleApiKey={hasGoogleApiKey}
             />
 
             <MapContainer

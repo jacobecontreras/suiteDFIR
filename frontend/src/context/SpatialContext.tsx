@@ -2,10 +2,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import type { GeoJsonObject } from 'geojson'
 
+type TileSource = 'osm' | 'google';
+type GoogleLayer = 'normal' | 'satellite' | 'hybrid';
+
 interface SpatialContextType {
     center: [number, number];
     zoom: number;
-    layer: 'normal' | 'satellite' | 'hybrid';
+    layer: GoogleLayer;
+    tileSource: TileSource;
     selectedKmlsPaths: string[];
     geoJsonData: GeoJsonObject | null;
     geoJsonDataKey: number;
@@ -14,7 +18,8 @@ interface SpatialContextType {
 
     setCenter: (center: [number, number] | ((prev: [number, number]) => [number, number])) => void;
     setZoom: (zoom: number | ((prev: number) => number)) => void;
-    setLayer: (layer: 'normal' | 'satellite' | 'hybrid') => void;
+    setLayer: (layer: GoogleLayer) => void;
+    setTileSource: (source: TileSource) => void;
     setSelectedKmlsPaths: (paths: string[] | ((prev: string[]) => string[])) => void;
     setGeoJsonData: (data: GeoJsonObject | null) => void;
     setSearchQuery: (query: string | ((prev: string) => string)) => void;
@@ -38,7 +43,8 @@ const STORAGE_KEY_PREFIX = 'suitedfir_spatial_state_';
 interface StoredState {
     center: [number, number];
     zoom: number;
-    layer: 'normal' | 'satellite' | 'hybrid';
+    layer: GoogleLayer;
+    tileSource: TileSource;
     selectedKmlsPaths: string[];
     searchQuery: string;
     searchPin: [number, number] | null;
@@ -48,6 +54,7 @@ const INITIAL_STATE: StoredState = {
     center: [40.7128, -74.0060],
     zoom: 13,
     layer: 'normal',
+    tileSource: 'osm',
     selectedKmlsPaths: [],
     searchQuery: "",
     searchPin: null
@@ -59,13 +66,14 @@ export function SpatialProvider({ children }: { children: React.ReactNode }) {
         INITIAL_STATE
     );
 
-    const { center, zoom, layer, selectedKmlsPaths, searchQuery, searchPin } = state;
+    const { center, zoom, layer, tileSource, selectedKmlsPaths, searchQuery, searchPin } = state;
 
     const setCenter = (val: [number, number] | ((prev: [number, number]) => [number, number])) =>
         setState(prev => ({ ...prev, center: typeof val === 'function' ? val(prev.center) : val }));
     const setZoom = (val: number | ((prev: number) => number)) =>
         setState(prev => ({ ...prev, zoom: typeof val === 'function' ? val(prev.zoom) : val }));
-    const setLayer = (val: 'normal' | 'satellite' | 'hybrid') => setState(prev => ({ ...prev, layer: val }));
+    const setLayer = (val: GoogleLayer) => setState(prev => ({ ...prev, layer: val }));
+    const setTileSource = (val: TileSource) => setState(prev => ({ ...prev, tileSource: val }));
     const setSelectedKmlsPaths = (val: string[] | ((prev: string[]) => string[])) =>
         setState(prev => ({ ...prev, selectedKmlsPaths: typeof val === 'function' ? val(prev.selectedKmlsPaths) : val }));
     const setSearchQuery = (val: string | ((prev: string) => string)) =>
@@ -111,6 +119,7 @@ export function SpatialProvider({ children }: { children: React.ReactNode }) {
             center,
             zoom,
             layer,
+            tileSource,
             selectedKmlsPaths,
             geoJsonData,
             geoJsonDataKey,
@@ -119,6 +128,7 @@ export function SpatialProvider({ children }: { children: React.ReactNode }) {
             setCenter,
             setZoom,
             setLayer,
+            setTileSource,
             setSelectedKmlsPaths,
             setGeoJsonData,
             setSearchQuery,

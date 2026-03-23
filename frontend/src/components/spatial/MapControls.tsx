@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from "react"
-import { Search, Upload, Loader2, Folder, Check, Trash2, MapPin, X, FileText, Eye, Save } from "lucide-react"
+import React, { useState, useRef, useEffect } from "react"
+import { Search, Upload, Loader2, Folder, Check, Trash2, X, FileText, Eye, Save } from "lucide-react"
 import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
@@ -8,6 +8,15 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { useConfirmDialog } from "@/hooks"
 import { useSpatial } from "@/context/SpatialContext"
 import { parseKmlText } from "@/lib/kmlUtils"
+import { useToast } from "@/hooks/use-toast"
+import SpatialSettingsPanel from "./SpatialSettingsPanel"
+import {
+    MAX_SPATIAL_FEATURES,
+    MAX_SPATIAL_FILE_SIZE_BYTES,
+    MAX_SPATIAL_IMPORT_FILES,
+    MAX_SPATIAL_TOTAL_SIZE_BYTES,
+    formatBytes,
+} from "@/lib/spatialLimits"
 import JSZip from "jszip"
 import type { GeoJsonObject } from 'geojson'
 
@@ -20,26 +29,29 @@ interface KmlFile {
     data?: GeoJsonObject // For temporary files
 }
 
-interface PlaceSuggestion {
-    placeId: string
-    mainText: string
-    secondaryText: string
-}
-
 interface LayerOption {
-    id: 'normal' | 'satellite' | 'hybrid'
+    id: 'osm' | 'google-normal' | 'google-satellite' | 'google-hybrid'
     label: string
     image?: string
+    requiresGoogleKey?: boolean
+}
+
+interface PlaceSuggestion {
+    place_id: string
+    display_name: string
+    primary_text?: string | null
+    secondary_text?: string | null
 }
 
 const LAYER_OPTIONS: LayerOption[] = [
-    { id: 'normal', label: 'Default', image: '/default.webp' },
-    { id: 'satellite', label: 'Satellite', image: '/satellite.webp' },
-    { id: 'hybrid', label: 'Hybrid', image: '/hybrid.webp' },
+    { id: 'osm', label: 'OSM', image: '/osm.webp' },
+    { id: 'google-normal', label: 'Default', image: '/default.webp', requiresGoogleKey: true },
+    { id: 'google-satellite', label: 'Satellite', image: '/satellite.webp', requiresGoogleKey: true },
+    { id: 'google-hybrid', label: 'Hybrid', image: '/hybrid.webp', requiresGoogleKey: true },
 ]
 
 // Layer preview component using static images
-const LayerPreview = ({ type, size = 'sm' }: { type: 'normal' | 'satellite' | 'hybrid', size?: 'sm' | 'lg' }) => {
+const LayerPreview = ({ type, size = 'sm' }: { type: 'osm' | 'google-normal' | 'google-satellite' | 'google-hybrid', size?: 'sm' | 'lg' }) => {
     const option = LAYER_OPTIONS.find(o => o.id === type)
     const dims = size === 'lg' ? { w: 60, h: 52 } : { w: 48, h: 42 }
 
@@ -58,25 +70,30 @@ const LayerPreview = ({ type, size = 'sm' }: { type: 'normal' | 'satellite' | 'h
 interface MapControlsProps {
     onSearch: (lat: number, lon: number) => void
     onLayerChange: (layer: 'normal' | 'satellite' | 'hybrid') => void
+    onTileSourceChange: (source: 'osm' | 'google', layer?: 'normal' | 'satellite' | 'hybrid') => void
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onDataUpload: (data: any) => void
     onAddKmlData: (url: string, data: any) => void
     onRemoveKmlData: (url: string) => void
     currentLayer: 'normal' | 'satellite' | 'hybrid'
+    currentTileSource: 'osm' | 'google'
     selectedCaseId: string | null
+    hasGoogleApiKey: boolean
 }
 
-export default function MapControls({ onSearch, onLayerChange, onDataUpload, onAddKmlData, onRemoveKmlData, currentLayer, selectedCaseId }: MapControlsProps) {
-    const { selectedKmlsPaths, setSelectedKmlsPaths, searchQuery, setSearchQuery, setSearchPin } = useSpatial()
+export default function MapControls({ onSearch, onLayerChange, onTileSourceChange, onDataUpload, onAddKmlData, onRemoveKmlData, currentLayer, currentTileSource, selectedCaseId, hasGoogleApiKey }: MapControlsProps) {
+    const { selectedKmlsPaths, setSelectedKmlsPaths, searchQuery, setSearchQuery, setSearchPin, tileSource, setTileSource, setLayer } = useSpatial()
+    const { toast } = useToast()
     const [isSearching, setIsSearching] = useState(false)
+    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+    const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([])
+    const [showSuggestions, setShowSuggestions] = useState(false)
+    const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState(-1)
     const [showLayerMenu, setShowLayerMenu] = useState(false)
     const [showKmlMenu, setShowKmlMenu] = useState(false)
     const [showImportMenu, setShowImportMenu] = useState(false)
     const [kmlFiles, setKmlFiles] = useState<Record<string, KmlFile[]>>({})
     const [temporaryKmls, setTemporaryKmls] = useState<KmlFile[]>([])
-    const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([])
-    const [showSuggestions, setShowSuggestions] = useState(false)
-    const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false)
     // Import dropdown state
     const [importFiles, setImportFiles] = useState<File[]>([])
     const [isDraggingImport, setIsDraggingImport] = useState(false)
@@ -85,10 +102,10 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
 
     const layerMenuRef = useRef<HTMLDivElement>(null)
     const kmlMenuRef = useRef<HTMLDivElement>(null)
-    const searchRef = useRef<HTMLDivElement>(null)
     const importMenuRef = useRef<HTMLDivElement>(null)
     const importFileInputRef = useRef<HTMLInputElement>(null)
-    const debounceRef = useRef<NodeJS.Timeout | null>(null)
+    const searchContainerRef = useRef<HTMLDivElement>(null)
+    const autocompleteSessionRef = useRef<string | null>(null)
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -101,48 +118,67 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
             if (kmlMenuRef.current && !kmlMenuRef.current.contains(event.target as Node)) {
                 setShowKmlMenu(false)
             }
-            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-                setShowSuggestions(false)
-            }
             if (importMenuRef.current && !importMenuRef.current.contains(event.target as Node)) {
                 setShowImportMenu(false)
+            }
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false)
+                setHighlightedSuggestionIndex(-1)
             }
         }
         document.addEventListener("mousedown", handleClickOutside)
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [confirmConfig.isOpen])
 
-    // Debounced autocomplete fetch
-    const fetchSuggestions = useCallback(async (query: string) => {
-        if (query.trim().length < 2) {
+    useEffect(() => {
+        const trimmedQuery = searchQuery.trim()
+        if (trimmedQuery.length < 3) {
             setSuggestions([])
+            setShowSuggestions(false)
+            setHighlightedSuggestionIndex(-1)
+            if (!trimmedQuery) {
+                autocompleteSessionRef.current = null
+            }
             return
         }
-        setIsFetchingSuggestions(true)
-        try {
-            const res = await fetch(API.path(`/spatial/autocomplete?q=${encodeURIComponent(query)}`))
-            if (res.ok) {
-                const data = await res.json()
+
+        const sessionToken = autocompleteSessionRef.current ?? window.crypto.randomUUID()
+        autocompleteSessionRef.current = sessionToken
+
+        let cancelled = false
+        const timeoutId = window.setTimeout(async () => {
+            setIsLoadingSuggestions(true)
+            try {
+                const res = await fetch(API.path(`/spatial/autocomplete?q=${encodeURIComponent(trimmedQuery)}&session_token=${encodeURIComponent(sessionToken)}`))
+                if (!res.ok) {
+                    throw new Error("Autocomplete request failed")
+                }
+
+                const data: PlaceSuggestion[] = await res.json()
+                if (cancelled) return
+
                 setSuggestions(data)
                 setShowSuggestions(data.length > 0)
+                setHighlightedSuggestionIndex(data.length > 0 ? 0 : -1)
+            } catch (error) {
+                if (!cancelled) {
+                    console.error("Autocomplete failed:", error)
+                    setSuggestions([])
+                    setShowSuggestions(false)
+                    setHighlightedSuggestionIndex(-1)
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsLoadingSuggestions(false)
+                }
             }
-        } catch {
-            setSuggestions([])
-        } finally {
-            setIsFetchingSuggestions(false)
-        }
-    }, [])
+        }, 250)
 
-    // Trigger autocomplete on input change
-    useEffect(() => {
-        if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => {
-            fetchSuggestions(searchQuery)
-        }, 300)
         return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current)
+            cancelled = true
+            window.clearTimeout(timeoutId)
         }
-    }, [searchQuery, fetchSuggestions])
+    }, [searchQuery])
 
     const fetchKmlFiles = React.useCallback(async () => {
         try {
@@ -193,12 +229,52 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
     }
 
     const validateAndAddFiles = (selectedFiles: File[]) => {
+        if (importFiles.length >= MAX_SPATIAL_IMPORT_FILES) {
+            toast({
+                variant: "destructive",
+                title: "Import limit reached",
+                description: `You can queue up to ${MAX_SPATIAL_IMPORT_FILES} spatial files at once.`,
+            })
+            return
+        }
+
         const validFiles = selectedFiles.filter(file => {
             const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
             return ['.kml', '.kmz'].includes(ext)
         })
-        if (validFiles.length > 0) {
-            setImportFiles(prev => [...prev, ...validFiles])
+
+        const oversizeFile = validFiles.find(file => file.size > MAX_SPATIAL_FILE_SIZE_BYTES)
+        if (oversizeFile) {
+            toast({
+                variant: "destructive",
+                title: "File too large",
+                description: `${oversizeFile.name} exceeds the ${formatBytes(MAX_SPATIAL_FILE_SIZE_BYTES)} import limit.`,
+            })
+            return
+        }
+
+        const availableSlots = MAX_SPATIAL_IMPORT_FILES - importFiles.length
+        const nextFiles = validFiles.slice(0, availableSlots)
+        const nextTotalSize = [...importFiles, ...nextFiles].reduce((sum, file) => sum + file.size, 0)
+
+        if (nextTotalSize > MAX_SPATIAL_TOTAL_SIZE_BYTES) {
+            toast({
+                variant: "destructive",
+                title: "Import queue too large",
+                description: `Queued spatial files cannot exceed ${formatBytes(MAX_SPATIAL_TOTAL_SIZE_BYTES)} total.`,
+            })
+            return
+        }
+
+        if (nextFiles.length > 0) {
+            setImportFiles(prev => [...prev, ...nextFiles])
+        }
+
+        if (validFiles.length > nextFiles.length) {
+            toast({
+                title: "Some files were skipped",
+                description: `Only the first ${availableSlots} additional files were added.`,
+            })
         }
     }
 
@@ -220,9 +296,20 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
                     const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'))
                     if (kmlFile) {
                         kmlText = await kmlFile.async('string')
+                    } else {
+                        throw new Error(`No KML file found in ${file.name}`)
                     }
                 }
                 const geojson = parseKmlText(kmlText)
+                const featureCount = 'features' in geojson && Array.isArray(geojson.features) ? geojson.features.length : 0
+                if (featureCount > MAX_SPATIAL_FEATURES) {
+                    toast({
+                        variant: "destructive",
+                        title: "Spatial file too dense",
+                        description: `${file.name} has ${featureCount.toLocaleString()} features. Limit is ${MAX_SPATIAL_FEATURES.toLocaleString()}.`,
+                    })
+                    continue
+                }
                 const tempFile: KmlFile = {
                     name: file.name,
                     url: `temp://${Date.now()}-${file.name}`,
@@ -237,6 +324,11 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
             setShowKmlMenu(true)
         } catch (error) {
             console.error("Failed to parse file:", error)
+            toast({
+                variant: "destructive",
+                title: "Import failed",
+                description: error instanceof Error ? error.message : "Failed to parse the selected spatial file.",
+            })
         } finally {
             setIsProcessingImport(false)
         }
@@ -252,10 +344,14 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
             for (const file of importFiles) {
                 const formData = new FormData()
                 formData.append("file", file)
-                await fetch(API.path("/spatial/import"), {
+                const res = await fetch(API.path("/spatial/import"), {
                     method: "POST",
                     body: formData
                 })
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => null)
+                    throw new Error(errorData?.detail || `Failed to save ${file.name}`)
+                }
             }
             resetImport()
             setShowKmlMenu(true)
@@ -263,6 +359,11 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
             await fetchKmlFiles()
         } catch (error) {
             console.error("Failed to save files:", error)
+            toast({
+                variant: "destructive",
+                title: "Import failed",
+                description: error instanceof Error ? error.message : "Failed to save one or more spatial files.",
+            })
         } finally {
             setIsProcessingImport(false)
         }
@@ -331,14 +432,10 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
         })
     }
 
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!searchQuery.trim()) return
-
-        setShowSuggestions(false)
+    const runSearch = async (query: string) => {
         setIsSearching(true)
         try {
-            const res = await fetch(API.path(`/spatial/search?q=${encodeURIComponent(searchQuery)}`))
+            const res = await fetch(API.path(`/spatial/search?q=${encodeURIComponent(query)}`))
             if (res.ok) {
                 const data = await res.json()
                 if (data && data.length > 0) {
@@ -353,23 +450,55 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
         }
     }
 
-    const handleSelectSuggestion = async (suggestion: PlaceSuggestion) => {
-        setSearchQuery(suggestion.mainText)
-        setIsSearching(true)
-        try {
-            // Use the main text to geocode
-            const res = await fetch(API.path(`/spatial/search?q=${encodeURIComponent(suggestion.mainText + ', ' + suggestion.secondaryText)}`))
-            if (res.ok) {
-                const data = await res.json()
-                if (data && data.length > 0) {
-                    const { lat, lon } = data[0]
-                    onSearch(parseFloat(lat), parseFloat(lon))
-                }
+    const resetAutocomplete = () => {
+        setSuggestions([])
+        setShowSuggestions(false)
+        setHighlightedSuggestionIndex(-1)
+        autocompleteSessionRef.current = null
+    }
+
+    const handleSuggestionSelect = async (suggestion: PlaceSuggestion) => {
+        setSearchQuery(suggestion.display_name)
+        resetAutocomplete()
+        await runSearch(suggestion.display_name)
+    }
+
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!searchQuery.trim()) return
+
+        if (showSuggestions && highlightedSuggestionIndex >= 0 && suggestions[highlightedSuggestionIndex]) {
+            await handleSuggestionSelect(suggestions[highlightedSuggestionIndex])
+            return
+        }
+
+        resetAutocomplete()
+        await runSearch(searchQuery.trim())
+    }
+
+    const handleSearchKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!showSuggestions || suggestions.length === 0) {
+            if (e.key === "Escape") {
+                resetAutocomplete()
             }
-        } catch (error) {
-            console.error("Geocode failed:", error)
-        } finally {
-            setIsSearching(false)
+            return
+        }
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault()
+            setHighlightedSuggestionIndex((current) => (current + 1) % suggestions.length)
+            return
+        }
+
+        if (e.key === "ArrowUp") {
+            e.preventDefault()
+            setHighlightedSuggestionIndex((current) => (current <= 0 ? suggestions.length - 1 : current - 1))
+            return
+        }
+
+        if (e.key === "Escape") {
+            e.preventDefault()
+            resetAutocomplete()
         }
     }
 
@@ -397,8 +526,8 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
             {/* Top Controls */}
             <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between items-start pointer-events-none">
                 {/* Search Bar */}
-                <div ref={searchRef} className="pointer-events-auto w-full max-w-[270px] shadow-lg relative">
-                    <form onSubmit={handleSearch} className="relative">
+                <div ref={searchContainerRef} className="pointer-events-auto w-full max-w-[320px] shadow-lg relative">
+                    <form onSubmit={handleSearch} className="flex gap-2">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
                             value={searchQuery}
@@ -407,33 +536,53 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
                                 setSearchQuery(newQuery);
                                 if (!newQuery.trim()) {
                                     setSearchPin(null);
+                                    resetAutocomplete();
                                 }
                             }}
-                            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                            placeholder="Search location..."
-                            className="pl-9 h-8 !bg-[#1f1f1f] hover:!bg-[#262626] focus:!bg-[#262626] !border-[#414141] text-white placeholder:text-muted-foreground placeholder:text-[11px] text-xs focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors shadow-md"
+                            onKeyDown={handleSearchKeyDown}
+                            placeholder="Search location and press Enter..."
+                            className="pl-9 h-8 flex-1 !bg-[#1f1f1f] hover:!bg-[#262626] focus:!bg-[#262626] !border-[#414141] text-white placeholder:text-muted-foreground placeholder:text-[11px] text-xs focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors shadow-md"
                         />
-                        {(isSearching || isFetchingSuggestions) && (
+                        {(isSearching || isLoadingSuggestions) && (
                             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 animate-spin" />
                         )}
+                        <Button
+                            type="submit"
+                            size="sm"
+                            disabled={!searchQuery.trim() || isSearching}
+                            className="h-8 px-3 !bg-[#1f1f1f] border border-[#414141] shadow-lg hover:!bg-[#333333] !text-[#fafafa] text-[10px] font-bold uppercase tracking-wider"
+                        >
+                            Search
+                        </Button>
                     </form>
 
-                    {/* Autocomplete Dropdown */}
                     {showSuggestions && suggestions.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-[#1A1A1A] border border-[#414141] rounded-lg shadow-xl overflow-hidden z-50">
-                            {suggestions.map((s, i) => (
-                                <button
-                                    key={s.placeId || i}
-                                    onClick={() => handleSelectSuggestion(s)}
-                                    className="w-full px-3 py-2 flex items-start gap-2 hover:bg-[#262626] transition-colors text-left border-b border-[#262626] last:border-b-0"
-                                >
-                                    <MapPin className="w-3.5 h-3.5 text-gray-500 mt-0.5 flex-shrink-0" />
-                                    <div className="min-w-0">
-                                        <div className="text-xs font-medium text-gray-200 truncate">{s.mainText}</div>
-                                        <div className="text-[10px] text-gray-500 truncate">{s.secondaryText}</div>
-                                    </div>
-                                </button>
-                            ))}
+                        <div className="absolute top-10 left-0 right-0 overflow-hidden rounded-lg border border-[#414141] bg-[#1A1A1A] shadow-xl">
+                            <div className="max-h-[260px] overflow-y-auto py-1">
+                                {suggestions.map((suggestion, index) => (
+                                    <button
+                                        key={suggestion.place_id}
+                                        type="button"
+                                        onClick={() => void handleSuggestionSelect(suggestion)}
+                                        className={cn(
+                                            "flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors",
+                                            index === highlightedSuggestionIndex ? "bg-[#2A2A2A]" : "hover:bg-[#242424]"
+                                        )}
+                                    >
+                                        <span className="text-xs font-medium text-white">
+                                            {suggestion.primary_text || suggestion.display_name}
+                                        </span>
+                                        {suggestion.secondary_text && (
+                                            <span className="text-[11px] text-gray-500">
+                                                {suggestion.secondary_text}
+                                            </span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="border-t border-[#2A2A2A] px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500">
+                                Suggestions powered by Google
+                            </div>
                         </div>
                     )}
                 </div>
@@ -654,6 +803,8 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
                             </div>
                         )}
                     </div>
+
+                    <SpatialSettingsPanel />
                 </div>
             </div>
 
@@ -666,10 +817,10 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
                         className="bg-[#1A1A1A]/90 border border-[#333] rounded-lg p-1.5 shadow-xl transition-all duration-200 hover:shadow-2xl"
                     >
                         <div className="rounded-md overflow-hidden" style={{ width: 52, height: 46 }}>
-                            <LayerPreview type={currentLayer} size="lg" />
+                            <LayerPreview type={currentTileSource === 'osm' ? 'osm' : `google-${currentLayer}` as any} size="lg" />
                         </div>
                         <span className="block text-[9px] font-medium text-white text-center mt-1">
-                            {LAYER_OPTIONS.find(l => l.id === currentLayer)?.label}
+                            {currentTileSource === 'osm' ? 'OSM' : LAYER_OPTIONS.find(l => l.id === `google-${currentLayer}`)?.label}
                         </span>
                     </button>
 
@@ -680,23 +831,48 @@ export default function MapControls({ onSearch, onLayerChange, onDataUpload, onA
                     )}>
                         <div className="bg-[#1A1A1A]/90 border border-[#333] rounded-lg p-1.5 shadow-xl">
                             <div className="flex items-center gap-2">
-                                {LAYER_OPTIONS.map((option) => (
-                                    <button
-                                        key={option.id}
-                                        onClick={() => {
-                                            onLayerChange(option.id)
-                                            setShowLayerMenu(false)
-                                        }}
-                                        className={cn(
-                                            "transition-all duration-150 hover:scale-105"
-                                        )}
-                                    >
-                                        <div className="rounded-md overflow-hidden shadow-md" style={{ width: 50, height: 44 }}>
-                                            <LayerPreview type={option.id} size="sm" />
-                                        </div>
-                                        <span className="block text-[8px] font-medium text-white text-center mt-1">{option.label}</span>
-                                    </button>
-                                ))}
+                                {LAYER_OPTIONS.map((option) => {
+                                    const isGoogleLayer = option.requiresGoogleKey
+                                    const isDisabled = isGoogleLayer && !hasGoogleApiKey
+
+                                    return (
+                                        <button
+                                            key={option.id}
+                                            onClick={() => {
+                                                if (isDisabled) {
+                                                    toast({
+                                                        variant: "destructive",
+                                                        title: "Google Maps API Key Required",
+                                                        description: "Open the map settings panel to add a Google Maps API key and use Google layers.",
+                                                    })
+                                                    return
+                                                }
+
+                                                if (option.id === 'osm') {
+                                                    setTileSource('osm')
+                                                } else {
+                                                    setTileSource('google')
+                                                    // Extract the layer type from 'google-normal', 'google-satellite', etc.
+                                                    const googleLayer = option.id.replace('google-', '') as 'normal' | 'satellite' | 'hybrid'
+                                                    setLayer(googleLayer)
+                                                }
+                                                setShowLayerMenu(false)
+                                            }}
+                                            disabled={isDisabled}
+                                            className={cn(
+                                                "transition-all duration-150 relative",
+                                                !isDisabled && "hover:scale-105",
+                                                isDisabled && "opacity-50 cursor-not-allowed"
+                                            )}
+                                            title={isDisabled ? "Requires Google Maps API key" : option.label}
+                                        >
+                                            <div className="rounded-md overflow-hidden shadow-md" style={{ width: 50, height: 44 }}>
+                                                <LayerPreview type={option.id} size="sm" />
+                                            </div>
+                                            <span className="block text-[8px] font-medium text-white text-center mt-1">{option.label}</span>
+                                        </button>
+                                    )
+                                })}
                             </div>
                         </div>
                     </div>
