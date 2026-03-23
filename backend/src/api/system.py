@@ -96,6 +96,8 @@ async def get_kml_data(path: str):
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="KML file not found")
+    except ValueError as e:
+        raise HTTPException(status_code=413, detail=str(e))
 
 
 @router.post("/spatial/import", response_model=KmlImportResponse)
@@ -110,6 +112,8 @@ async def import_kml_file(
         content = await file.read()
         saved_name = await spatial_manager.save_imported_file(content, file.filename)
         return KmlImportResponse(message="File imported successfully", filename=saved_name)
+    except ValueError as e:
+        raise HTTPException(status_code=413, detail=str(e))
     except Exception as e:
         logger.error(f"Import failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to save file")

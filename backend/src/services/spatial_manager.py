@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 IMPORTS_DIR = os.path.join(DATA_DIR, "imports")
 os.makedirs(IMPORTS_DIR, exist_ok=True)
+MAX_SPATIAL_FILE_BYTES = 25 * 1024 * 1024
 
 
 class SpatialManager:
@@ -128,6 +129,9 @@ class SpatialManager:
             if not os.path.exists(kml_abs_path):
                 raise FileNotFoundError(f"KML file not found: {path}")
 
+            if os.path.getsize(kml_abs_path) > MAX_SPATIAL_FILE_BYTES:
+                raise ValueError("KML/KMZ file is too large to load safely")
+
             # Determine TSV path
             tsv_dir = os.path.dirname(kml_abs_path).replace("_KML Exports", "_TSV Exports")
             kml_filename = os.path.basename(kml_abs_path)
@@ -229,8 +233,11 @@ class SpatialManager:
     async def save_imported_file(self, file_content: bytes, filename: str) -> str:
         """Save uploaded KML/KMZ to imports directory."""
         loop = asyncio.get_running_loop()
-        
+
         def _save():
+            if len(file_content) > MAX_SPATIAL_FILE_BYTES:
+                raise ValueError("KML/KMZ file exceeds the 25 MB import limit")
+
             # Sanitize filename
             safe_filename = os.path.basename(filename)
             file_path = os.path.join(IMPORTS_DIR, safe_filename)
