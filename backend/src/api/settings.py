@@ -2,8 +2,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from core.models import SettingValue
+from core.models import ApiKeyVerificationResponse, SettingValue
 from services.settings_manager import settings_manager
+from services.tile_manager import tile_manager
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,14 @@ router = APIRouter(
     prefix="/api/settings",
     tags=["settings"]
 )
+
+
+@router.post("/verify/google-maps-key", response_model=ApiKeyVerificationResponse)
+async def verify_google_maps_api_key(body: SettingValue):
+    """Verify a Google Maps API key before persisting it."""
+    return ApiKeyVerificationResponse.model_validate(
+        await tile_manager.verify_google_maps_api_key(body.value)
+    )
 
 
 @router.get("/{key}")

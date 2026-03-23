@@ -51,16 +51,13 @@ async def get_tile_session_status():
     return await tile_manager.get_tile_session_status()
 
 
-# PLACE AUTOCOMPLETE & SEARCH
+@router.get("/search", response_model=List[GeocodeResult])
+async def search_location(q: str):
+    """Return explicit, submit-based geocoding results using the configured provider."""
+    return await tile_manager.search_location(q)
 
 
 @router.get("/autocomplete", response_model=List[PlaceSuggestion])
-async def autocomplete_places(q: str):
-    """Proxy Google Places Autocomplete (New) API for suggestions."""
-    return await tile_manager.autocomplete_places(q)
-
-
-@router.get("/search", response_model=List[GeocodeResult])
-async def search_location(q: str):
-    """Proxy Google Geocoding API search."""
-    return await tile_manager.search_location(q)
+async def autocomplete_location(q: str, session_token: str | None = None):
+    """Return Google Places autocomplete suggestions when Google geocoding is active."""
+    return await tile_manager.autocomplete_location(q, session_token)
