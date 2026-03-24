@@ -84,7 +84,8 @@ export default function ExtractionPage({ type, actionSlot }: ExtractionPageProps
 
     const { selectedId: selectedBackupId, historicalLogs, handleItemClick: handleBackupClick, clearSelection: clearSelectedBackup } = useHistoricalLogs(
         isBackingUp,
-        useCallback((id: number) => API.path(`/backups/${id}/log`), [])
+        useCallback((id: number) => API.path(`/backups/${id}/log`), []),
+        platformBackups.map(b => b.id)
     );
 
     const isViewingActiveLog = isBackingUp && !selectedBackupId;
@@ -205,13 +206,28 @@ export default function ExtractionPage({ type, actionSlot }: ExtractionPageProps
     };
 
     const handleDeleteBackup = async (id: number) => {
+        // Check if this is the last backup BEFORE deletion (more reliable than filtering)
+        const isLastBackup = platformBackups.length === 1;
+
         try {
-            const api = createLeappApi('ios');
+            const api = createLeappApi(type);
             await api.backup.deleteBackup(id)
             toast({
                 title: "Backup Deleted",
                 description: "Backup files have been removed.",
             })
+
+            // Clear selection if the deleted backup was selected
+            if (selectedBackupId === id) {
+                clearSelectedBackup();
+            }
+
+            // Clear persisted logs if this was the last backup and no backup is active or starting
+            // Guard against clearing during the backup-start window when isAwaitingDevicePasscode is true
+            if (isLastBackup && !isBackingUp && !isAwaitingDevicePasscode && activeBackupId === null) {
+                clearLogs();
+            }
+
             fetchBackups(selectedCaseId || undefined)
         } catch (error) {
             console.error('Failed to delete backup:', error)

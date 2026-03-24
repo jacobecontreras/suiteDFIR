@@ -23,7 +23,7 @@ Write a detailed markdown plan covering:
 
 **Round 1** — start a fresh Codex session:
 ```
-codex exec "You are a senior engineer reviewing an implementation plan. First line of your response must be APPROVED or REVISE. Then bullet your specific concerns or suggestions. Plan:\n\n<your plan>"
+codex --full-auto exec "You are a senior engineer reviewing an implementation plan. First line of your response must be APPROVED or REVISE. Then bullet your specific concerns or suggestions. Plan:\n\n<your plan>"
 ```
 
 **Round 2+** — resume the same session so Codex has full context of prior exchange:
@@ -31,7 +31,7 @@ codex exec "You are a senior engineer reviewing an implementation plan. First li
 codex exec resume --last "Here is the revised plan addressing your concerns. Re-review and again reply APPROVED or REVISE on the first line:\n\n<updated plan>"
 ```
 
-IMPORTANT: If codex responds with REVISE, concisely inform the user of the issues codex finds.
+IMPORTANT: If codex responds with REVISE, concisely inform the user of the issues codex finds, with recommendation if we should accept or deny the results found.
 
 - If **REVISE**: address each concern, update the plan, run the resume command again
 - If **APPROVED**: move to step 4

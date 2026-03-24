@@ -34,7 +34,7 @@ Do not modify any files."
 codex exec resume --last "Claude has addressed the approved findings. Re-review the updated diff using git diff HEAD. Same format: APPROVED or ISSUES FOUND on the first line, then findings."
 ```
 
-Quote Codex's response verbatim each round.
+Quote Codex's response verbatim each round, with recommendation if we should accept or deny the results found.
 
 ## 3. Human checkpoint
 

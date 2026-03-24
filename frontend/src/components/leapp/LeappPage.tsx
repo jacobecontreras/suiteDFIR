@@ -44,7 +44,8 @@ function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionS
     const { config: confirmConfig, show: showConfirm, hide: hideConfirm, handleConfirm } = useConfirmDialog();
     const { selectedId: selectedReportId, historicalLogs, handleItemClick: handleReportClick, clearSelection: clearSelectedReport } = useHistoricalLogs(
         isProcessing,
-        useCallback((id: number) => API.path(`/reports/${id}/view/processing.log`), [])
+        useCallback((id: number) => API.path(`/reports/${id}/view/processing.log`), []),
+        reports.map(r => r.id)
     );
 
     const isViewingActiveLog = isProcessing && !selectedReportId;
@@ -146,11 +147,24 @@ function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionS
             variant: 'destructive',
             confirmLabel: 'Delete',
             onConfirm: async () => {
+                // Check if this is the last report BEFORE deletion (more reliable than filtering)
+                const isLastReport = reports.length === 1;
+
                 try {
                     const response = await fetch(API.path(`/reports/${id}`), {
                         method: 'DELETE'
                     });
                     if (response.ok) {
+                        // Clear selection if the deleted report was selected
+                        if (selectedReportId === id) {
+                            clearSelectedReport();
+                        }
+
+                        // Clear persisted logs if this was the last report and no processing is active
+                        if (isLastReport && !isProcessing) {
+                            clearLogs(tool);
+                        }
+
                         fetchReports();
                     }
                 } catch (error) {

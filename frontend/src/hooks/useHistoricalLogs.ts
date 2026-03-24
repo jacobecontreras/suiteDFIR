@@ -6,10 +6,12 @@ import { useState, useEffect, useCallback } from 'react';
  *
  * @param isProcessing - Whether a job is currently running. Resets selection when true.
  * @param buildLogUrl  - Function that returns the full API URL for a given item id.
+ * @param validItemIds - Optional list of valid item IDs. Clears selection if selectedId is no longer in this list.
  */
 export function useHistoricalLogs(
     isProcessing: boolean,
-    buildLogUrl: (id: number) => string
+    buildLogUrl: (id: number) => string,
+    validItemIds?: number[]
 ) {
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [historicalLogs, setHistoricalLogs] = useState<string[]>([]);
@@ -47,6 +49,14 @@ export function useHistoricalLogs(
             clearSelection();
         }
     }, [isProcessing, clearSelection]);
+
+    // Clear selection if the selected item is no longer in the valid item IDs list
+    // This handles cases where items are deleted, removed by background refresh, or external changes
+    useEffect(() => {
+        if (selectedId !== null && validItemIds && !validItemIds.includes(selectedId)) {
+            clearSelection();
+        }
+    }, [selectedId, validItemIds, clearSelection]);
 
     return { selectedId, historicalLogs, handleItemClick, clearSelection };
 }
