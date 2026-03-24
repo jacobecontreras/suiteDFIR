@@ -36,3 +36,10 @@ async def set_setting(key: str, body: SettingValue):
     """Create or update a setting."""
     await settings_manager.set_setting(key, body.value)
     return {"key": key, "value": body.value}
+
+
+@router.delete("/{key}")
+async def delete_setting(key: str):
+    """Delete a setting by key. Idempotent: returns 200 whether or not key existed."""
+    await settings_manager.delete_setting(key)
+    return {"message": "Setting deleted"}

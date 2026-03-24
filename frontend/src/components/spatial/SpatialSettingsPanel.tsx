@@ -12,12 +12,13 @@ const DEFAULT_NOMINATIM_USER_AGENT = "suiteDFIR/1.0 (+https://github.com/jacobco
 
 export default function SpatialSettingsPanel() {
     const { toast } = useToast()
-    const { tileSource } = useSpatial()
+    const { tileSource, setTileSource, refreshApiKey } = useSpatial()
     const panelRef = useRef<HTMLDivElement>(null)
     const triggerRef = useRef<HTMLButtonElement>(null)
     const [isOpen, setIsOpen] = useState(false)
     const [apiKey, setApiKey] = useState("")
     const [showKey, setShowKey] = useState(false)
+    const [showClearConfirm, setShowClearConfirm] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [saved, setSaved] = useState(false)
@@ -33,6 +34,9 @@ export default function SpatialSettingsPanel() {
         if (!isOpen) return
 
         const handleClickOutside = (event: MouseEvent) => {
+            // Don't close panel if the confirmation dialog is open
+            if (showClearConfirm) return
+
             const target = event.target as Node
             if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) {
                 return
@@ -41,6 +45,11 @@ export default function SpatialSettingsPanel() {
         }
 
         const handleEscape = (event: KeyboardEvent) => {
+            // Close confirmation dialog on Escape, not the whole panel
+            if (showClearConfirm) {
+                setShowClearConfirm(false)
+                return
+            }
             if (event.key === "Escape") {
                 setIsOpen(false)
             }
@@ -52,6 +61,12 @@ export default function SpatialSettingsPanel() {
         return () => {
             document.removeEventListener("mousedown", handleClickOutside)
             document.removeEventListener("keydown", handleEscape)
+        }
+    }, [isOpen, showClearConfirm])
+
+    useEffect(() => {
+        if (!isOpen) {
+            setShowClearConfirm(false)
         }
     }, [isOpen])
 
@@ -78,6 +93,10 @@ export default function SpatialSettingsPanel() {
                     const data = await apiKeyRes.value.json()
                     setApiKey(data.value)
                     setHasExistingKey(Boolean(data.value))
+                } else if (apiKeyRes.status === "fulfilled" && apiKeyRes.value.status === 404) {
+                    // Key not found (404) means no key is set
+                    setApiKey("")
+                    setHasExistingKey(false)
                 }
 
                 if (providerRes.status === "fulfilled" && providerRes.value.ok) {
@@ -112,6 +131,9 @@ export default function SpatialSettingsPanel() {
         const normalizedBaseUrl = nominatimBaseUrl.trim().replace(/\/+$/, "") || DEFAULT_NOMINATIM_URL
         const normalizedUserAgent = nominatimUserAgent.trim() || DEFAULT_NOMINATIM_USER_AGENT
 
+        // Check if user is clearing an existing key by saving with empty input
+        const isClearingKey = normalizedKey === "" && hasExistingKey
+
         setIsSaving(true)
         setSaved(false)
         try {
@@ -134,15 +156,22 @@ export default function SpatialSettingsPanel() {
             }
 
             const responses = await Promise.all([
-                ...(normalizedKey ? [fetch(API.path("/settings/google_maps_api_key"), {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ value: normalizedKey }),
-                })] : []),
+                // If clearing an existing key, use DELETE. Otherwise, PUT if there's a new key.
+                ...(isClearingKey
+                    ? [fetch(API.path("/settings/google_maps_api_key"), { method: "DELETE" })]
+                    : (normalizedKey
+                        ? [fetch(API.path("/settings/google_maps_api_key"), {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ value: normalizedKey }),
+                        })]
+                        : []
+                    )
+                ),
                 fetch(API.path("/settings/geocoder_provider"), {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ value: geocoderProvider }),
+                    body: JSON.stringify({ value: isClearingKey ? "nominatim" : geocoderProvider }),
                 }),
                 fetch(API.path("/settings/nominatim_base_url"), {
                     method: "PUT",
@@ -165,9 +194,22 @@ export default function SpatialSettingsPanel() {
             setNominatimBaseUrl(normalizedBaseUrl)
             setNominatimUserAgent(normalizedUserAgent)
             setSaved(true)
+
+            // If clearing a key, switch to OSM tiles if currently on Google
+            if (isClearingKey && tileSource === 'google') {
+                setTileSource('osm')
+            }
+
+            // Trigger refresh of API key status across components when a key was saved or cleared
+            if (normalizedKey || isClearingKey) {
+                refreshApiKey()
+            }
+
             toast({
                 title: "Spatial settings saved",
-                description: normalizedKey
+                description: isClearingKey
+                    ? "API key cleared. Geocoding will use Nominatim (OpenStreetMap)."
+                    : normalizedKey
                     ? "Google Maps and geocoder settings were updated."
                     : "Geocoder settings were updated.",
             })
@@ -179,6 +221,56 @@ export default function SpatialSettingsPanel() {
                 variant: "destructive",
                 title: "Failed to save settings",
                 description: "The spatial settings could not be updated right now.",
+            })
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
+    const handleClearKey = async () => {
+        setIsSaving(true)
+        try {
+            // Reset geocoder_provider first - if this fails, don't delete the key
+            const providerRes = await fetch(API.path("/settings/geocoder_provider"), {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ value: "nominatim" }),
+            })
+            if (!providerRes.ok) {
+                throw new Error("Failed to reset geocoder provider")
+            }
+
+            // Now delete the API key (idempotent - 200 OK whether existed or not)
+            const deleteRes = await fetch(API.path("/settings/google_maps_api_key"), {
+                method: "DELETE",
+            })
+            if (!deleteRes.ok) {
+                throw new Error("Failed to clear key")
+            }
+
+            // Update local state immediately
+            setApiKey("")
+            setHasExistingKey(false)
+            setGeocoderProvider("nominatim")
+            setShowClearConfirm(false)
+
+            // Switch to OSM tiles if currently on Google tiles
+            if (tileSource === 'google') {
+                setTileSource('osm')
+            }
+
+            // Trigger refresh of API key status across components
+            refreshApiKey()
+
+            toast({
+                title: "API key cleared",
+                description: "Google Maps API key has been removed. Geocoding will use Nominatim (OpenStreetMap).",
+            })
+        } catch {
+            toast({
+                variant: "destructive",
+                title: "Failed to clear key",
+                description: "Could not remove the API key. Please try again.",
             })
         } finally {
             setIsSaving(false)
@@ -262,6 +354,17 @@ export default function SpatialSettingsPanel() {
                                     </div>
                                     {hasExistingKey && !saved && (
                                         <p className="text-[11px] font-medium text-gray-500">Key configured</p>
+                                    )}
+                                    {hasExistingKey && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowClearConfirm(true)}
+                                            className="text-[11px] text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={isSaving}
+                                        >
+                                            <X size={12} />
+                                            Clear API key
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -386,6 +489,23 @@ export default function SpatialSettingsPanel() {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+            {showClearConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => {
+                    if (e.target === e.currentTarget) setShowClearConfirm(false)
+                }}>
+                    <div className="bg-[#1A1A1A] border border-[#333333] rounded-lg p-4 max-w-sm mx-4">
+                        <p className="text-sm text-white mb-4">Clear Google Maps API key? Geocoding will fall back to Nominatim (OpenStreetMap).</p>
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => setShowClearConfirm(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={handleClearKey} disabled={isSaving}>
+                                {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Clear Key"}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

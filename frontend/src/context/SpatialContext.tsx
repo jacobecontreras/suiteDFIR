@@ -29,6 +29,10 @@ interface SpatialContextType {
     fittedPaths: Set<string>;
     markPathFitted: (path: string) => void;
 
+    // Trigger refresh of API key status across components
+    refreshApiKey: () => void;
+    apiKeyRefreshKey: number;
+
     isStateLoaded: boolean;
 }
 
@@ -84,6 +88,7 @@ export function SpatialProvider({ children }: { children: React.ReactNode }) {
     const [geoJsonData, setGeoJsonDataState] = useState<GeoJsonObject | null>(null);
     const [geoJsonDataKey, setGeoJsonDataKey] = useState(0);
     const [fittedPaths, setFittedPaths] = useState<Set<string>>(new Set());
+    const [apiKeyRefreshKey, setApiKeyRefreshKey] = useState(0);
 
     // Wrapper that increments key when data changes (for react-leaflet GeoJSON re-render)
     const setGeoJsonData = (data: GeoJsonObject | null) => {
@@ -93,6 +98,10 @@ export function SpatialProvider({ children }: { children: React.ReactNode }) {
 
     const markPathFitted = (path: string) => {
         setFittedPaths(prev => new Set(prev).add(path));
+    };
+
+    const refreshApiKey = () => {
+        setApiKeyRefreshKey(prev => prev + 1);
     };
 
     // Auto-sync fittedPaths with selectedKmlsPaths when state is loaded
@@ -135,6 +144,8 @@ export function SpatialProvider({ children }: { children: React.ReactNode }) {
             setSearchPin,
             fittedPaths,
             markPathFitted,
+            refreshApiKey,
+            apiKeyRefreshKey,
             isStateLoaded
         }}>
             {children}

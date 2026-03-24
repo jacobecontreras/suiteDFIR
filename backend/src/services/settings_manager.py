@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from core.database import db_fetch_one, db_execute
+from core.database import db_fetch_one, db_execute, db_execute_delete
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,10 @@ class SettingsManager:
             (key, value)
         )
 
-    async def delete_setting(self, key: str) -> None:
-        """Delete a setting by key."""
-        await db_execute("DELETE FROM settings WHERE key = ?", (key,))
+    async def delete_setting(self, key: str) -> bool:
+        """Delete a setting by key. Returns True if a row was deleted."""
+        rowcount = await db_execute_delete("DELETE FROM settings WHERE key = ?", (key,))
+        return rowcount > 0
 
 
 # Global instance

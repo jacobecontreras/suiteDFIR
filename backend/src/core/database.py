@@ -130,6 +130,20 @@ async def db_execute(query: str, params: tuple = ()) -> None:
             conn.execute(query, params)
     await loop.run_in_executor(None, _do)
 
+
+async def db_execute_delete(query: str, params: tuple = ()) -> int:
+    """Execute a DELETE operation and return number of rows affected."""
+    logger.debug(f"SQL Delete: {query} | Params: {params}")
+    loop = asyncio.get_running_loop()
+    def _do():
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.execute(query, params)
+            conn.commit()
+            return cursor.rowcount
+    rowcount = await loop.run_in_executor(None, _do)
+    logger.debug(f"SQL Delete affected {rowcount} row(s)")
+    return rowcount
+
 async def db_fetch_one(query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
     """Execute a read operation and return a single row as a dict."""
     logger.debug(f"SQL Fetch One: {query} | Params: {params}")

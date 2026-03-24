@@ -180,6 +180,8 @@ export default function SpatialMap() {
         selectedKmlsPaths, setSelectedKmlsPaths,
         geoJsonData, geoJsonDataKey, setGeoJsonData,
         searchPin, setSearchPin,
+        refreshApiKey,
+        apiKeyRefreshKey,
         isStateLoaded
     } = useSpatial()
 
@@ -199,13 +201,22 @@ export default function SpatialMap() {
         const checkApiKey = async () => {
             try {
                 const res = await fetch(API.path("/settings/google_maps_api_key"))
-                setHasGoogleApiKey(res.ok && (await res.json()).value !== '')
+                if (res.ok) {
+                    const data = await res.json()
+                    setHasGoogleApiKey(data.value !== '')
+                } else if (res.status === 404) {
+                    // 404 means key is not set
+                    setHasGoogleApiKey(false)
+                } else {
+                    // Other error - assume no key
+                    setHasGoogleApiKey(false)
+                }
             } catch {
                 setHasGoogleApiKey(false)
             }
         }
         checkApiKey()
-    }, [])
+    }, [apiKeyRefreshKey])
 
     // Callback to add KML data by URL (used by MapControls for temporary files)
     const addBrowsedKml = useCallback((url: string, data: GeoJsonObject) => {
