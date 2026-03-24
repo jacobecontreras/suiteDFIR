@@ -32,6 +32,7 @@ interface KmlFile {
 interface LayerOption {
     id: 'osm' | 'google-normal' | 'google-satellite' | 'google-hybrid'
     label: string
+    sublabel?: string
     image?: string
     requiresGoogleKey?: boolean
 }
@@ -44,10 +45,10 @@ interface PlaceSuggestion {
 }
 
 const LAYER_OPTIONS: LayerOption[] = [
-    { id: 'osm', label: 'OSM', image: '/osm.webp' },
-    { id: 'google-normal', label: 'Default', image: '/default.webp', requiresGoogleKey: true },
-    { id: 'google-satellite', label: 'Satellite', image: '/satellite.webp', requiresGoogleKey: true },
-    { id: 'google-hybrid', label: 'Hybrid', image: '/hybrid.webp', requiresGoogleKey: true },
+    { id: 'osm', label: 'Default', sublabel: 'OSM', image: '/osm.webp' },
+    { id: 'google-normal', label: 'Default', sublabel: 'Google', image: '/default.webp', requiresGoogleKey: true },
+    { id: 'google-satellite', label: 'Satellite', sublabel: 'Google', image: '/satellite.webp', requiresGoogleKey: true },
+    { id: 'google-hybrid', label: 'Hybrid', sublabel: 'Google', image: '/hybrid.webp', requiresGoogleKey: true },
 ]
 
 // Layer preview component using static images
@@ -828,9 +829,14 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
                         <div className="rounded-md overflow-hidden" style={{ width: 52, height: 46 }}>
                             <LayerPreview type={currentTileSource === 'osm' ? 'osm' : `google-${currentLayer}` as any} size="lg" />
                         </div>
-                        <span className="block text-[9px] font-medium text-white text-center mt-1">
-                            {currentTileSource === 'osm' ? 'OSM' : LAYER_OPTIONS.find(l => l.id === `google-${currentLayer}`)?.label}
-                        </span>
+                        <div className="text-center mt-1">
+                            <span className="block text-[9px] font-medium text-white">
+                                {currentTileSource === 'osm' ? 'Default' : LAYER_OPTIONS.find(l => l.id === `google-${currentLayer}`)?.label}
+                            </span>
+                            <span className="block text-[7px] text-gray-400">
+                                {currentTileSource === 'osm' ? 'OSM' : LAYER_OPTIONS.find(l => l.id === `google-${currentLayer}`)?.sublabel}
+                            </span>
+                        </div>
                     </button>
 
                     {/* Expanded Layer Options (Ribbon) */}
@@ -878,7 +884,12 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
                                             <div className="rounded-md overflow-hidden shadow-md" style={{ width: 50, height: 44 }}>
                                                 <LayerPreview type={option.id} size="sm" />
                                             </div>
-                                            <span className="block text-[8px] font-medium text-white text-center mt-1">{option.label}</span>
+                                            <div className="text-center mt-1">
+                                                <span className="block text-[8px] font-medium text-white">{option.label}</span>
+                                                {option.sublabel && (
+                                                    <span className="block text-[7px] text-gray-400">{option.sublabel}</span>
+                                                )}
+                                            </div>
                                         </button>
                                     )
                                 })}
