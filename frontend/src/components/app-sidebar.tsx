@@ -3,7 +3,6 @@ import {
     FileText,
     Smartphone,
     Box,
-    Clock,
     PanelLeft,
     Archive,
     ChevronLeft
@@ -57,11 +56,6 @@ const data = {
             title: "GeoSpatial",
             url: "/spatial",
             icon: Box,
-        },
-        {
-            title: "Timeline",
-            url: "/timeline",
-            icon: Clock,
         },
     ],
 }

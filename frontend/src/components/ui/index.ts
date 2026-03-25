@@ -8,7 +8,6 @@ export * from './Input';
 export * from './LibraryCard';
 export * from './ItemLibrary';
 export * from './LoadingPage';
-export * from './DataTable';
 export * from './table';
 export * from './Select';
 export * from './separator';

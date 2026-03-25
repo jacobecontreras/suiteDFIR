@@ -6,6 +6,7 @@ import { usePersistedState } from '@/hooks/usePersistedState'
 const SpatialMap = lazy(() => import('@/components/spatial/SpatialMap'))
 
 export default function SpatialPage() {
+    const [pageContainer, setPageContainer] = useState<HTMLDivElement | null>(null)
     const [dismissed, setDismissed, isLoaded] = usePersistedState(
         'googleMapsInfoDismissed',
         false,
@@ -28,8 +29,8 @@ export default function SpatialPage() {
     const shouldShowModal = isLoaded && !dismissed && !dismissedThisSession
 
     return (
-        <div className="h-full w-full relative overflow-hidden">
-            <Suspense fallback={<LoadingPage />}>
+        <div ref={setPageContainer} className="h-full w-full relative overflow-hidden">
+            <Suspense fallback={<LoadingPage className="absolute inset-0 min-h-0 h-full z-10" />}>
                 <SpatialMap />
             </Suspense>
             <GoogleMapsInfoModal
@@ -37,6 +38,7 @@ export default function SpatialPage() {
                 onOpenChange={handleModalOpenChange}
                 dontShowAgain={dontShowAgain}
                 onDontShowAgainChange={setDontShowAgain}
+                container={pageContainer}
             />
         </div>
     );

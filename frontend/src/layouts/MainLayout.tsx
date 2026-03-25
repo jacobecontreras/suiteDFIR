@@ -7,7 +7,6 @@ import { DashboardProvider } from '@/context/DashboardContext'
 import { SpatialProvider } from '@/context/SpatialContext'
 import { LeappProvider } from '@/context/LeappContext'
 import { BackupProvider } from '@/context/BackupContext'
-import { TimelineProvider } from '@/context/TimelineContext'
 import { LoadingPage } from '@/components/ui/LoadingPage'
 
 export default function MainLayout() {
@@ -27,7 +26,6 @@ export default function MainLayout() {
                     <LeappProvider>
                         <BackupProvider type="ios">
                         <BackupProvider type="android">
-                            <TimelineProvider>
                                 <SidebarProvider defaultOpen={defaultOpen} className="h-full w-full min-h-0 overflow-hidden">
                                     <AppSidebar />
                                     <SidebarInset className="bg-[#151515] flex flex-col overflow-hidden h-full min-h-0">
@@ -36,7 +34,6 @@ export default function MainLayout() {
                                         </Suspense>
                                     </SidebarInset>
                                 </SidebarProvider>
-                            </TimelineProvider>
                         </BackupProvider>
                         </BackupProvider>
                     </LeappProvider>

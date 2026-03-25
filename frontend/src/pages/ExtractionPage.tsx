@@ -12,6 +12,10 @@ function isExtractionType(value: string | null): value is ExtractionType {
     return value === 'ios' || value === 'android'
 }
 
+function getExtractionLabel(type: ExtractionType) {
+    return type === 'ios' ? 'iOS (libimobile)' : 'Android (adb)'
+}
+
 export default function ExtractionPage() {
     const [searchParams, setSearchParams] = useSearchParams()
     const requestedType = searchParams.get('type')
@@ -33,7 +37,7 @@ export default function ExtractionPage() {
                             <div className="h-9 w-full rounded-md border border-[#333333] bg-[#171717] p-1 flex gap-1">
                                 {EXTRACTION_TYPES.map((type) => {
                                     const isActive = type === activeType
-                                    const label = type === 'ios' ? 'iOS' : 'Android'
+                                    const label = getExtractionLabel(type)
 
                                     return (
                                         <Button
@@ -62,7 +66,7 @@ export default function ExtractionPage() {
                             <div className="h-9 w-full rounded-md border border-[#333333] bg-[#171717] p-1 flex gap-1">
                                 {EXTRACTION_TYPES.map((type) => {
                                     const isActive = type === activeType
-                                    const label = type === 'ios' ? 'iOS' : 'Android'
+                                    const label = getExtractionLabel(type)
 
                                     return (
                                         <Button

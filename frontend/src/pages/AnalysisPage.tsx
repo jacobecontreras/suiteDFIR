@@ -12,6 +12,10 @@ function isAnalysisTool(value: string | null): value is AnalysisTool {
     return value === 'ileapp' || value === 'aleapp'
 }
 
+function getAnalysisLabel(tool: AnalysisTool) {
+    return tool === 'ileapp' ? 'iOS (iLEAPP)' : 'Android (aLEAPP)'
+}
+
 export default function AnalysisPage() {
     const [searchParams, setSearchParams] = useSearchParams()
     const requestedTool = searchParams.get('tool')
@@ -31,7 +35,7 @@ export default function AnalysisPage() {
                         <div className="h-9 w-full rounded-md border border-[#333333] bg-[#171717] p-1 flex gap-1">
                             {ANALYSIS_TOOLS.map((tool) => {
                                 const isActive = tool === activeTool
-                                const label = tool === 'ileapp' ? 'iLEAPP' : 'aLEAPP'
+                                const label = getAnalysisLabel(tool)
 
                                 return (
                                     <Button
@@ -57,7 +61,7 @@ export default function AnalysisPage() {
                         <div className="h-9 w-full rounded-md border border-[#333333] bg-[#171717] p-1 flex gap-1">
                             {ANALYSIS_TOOLS.map((tool) => {
                                 const isActive = tool === activeTool
-                                const label = tool === 'ileapp' ? 'iLEAPP' : 'aLEAPP'
+                                const label = getAnalysisLabel(tool)
 
                                 return (
                                     <Button

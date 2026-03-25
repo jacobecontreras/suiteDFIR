@@ -291,25 +291,6 @@ class StorageUsage(BaseModel):
     free: int
     breakdown: List[StorageBreakdownItem]
 
-# TIMELINE RESPONSE MODELS
-
-class TimelineEvent(BaseModel):
-    """Single timeline event."""
-    id: int
-    date: Optional[str] = None
-    artifact: str
-    description: str
-    source: str
-    report_id: Optional[int] = None
-
-
-class TimelineResponse(BaseModel):
-    """Paginated timeline response."""
-    events: List[TimelineEvent]
-    total: int
-    page: int
-    limit: int
-
 # ACTIVITY RESPONSE MODELS
 
 class ActivityItem(BaseModel):

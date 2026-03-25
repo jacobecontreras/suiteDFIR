@@ -7,17 +7,23 @@ interface GoogleMapsInfoModalProps {
     onOpenChange: (open: boolean) => void
     dontShowAgain: boolean
     onDontShowAgainChange: (checked: boolean) => void
+    container?: HTMLElement | null
 }
 
 export function GoogleMapsInfoModal({
     open,
     onOpenChange,
     dontShowAgain,
-    onDontShowAgainChange
+    onDontShowAgainChange,
+    container
 }: GoogleMapsInfoModalProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[300px] p-4 bg-[#1A1A1A] border-[#333333]">
+            <DialogContent
+                portalContainer={container}
+                overlayClassName={container ? "absolute inset-0" : undefined}
+                className={container ? "absolute max-w-[300px] p-4 bg-[#1A1A1A] border-[#333333]" : "max-w-[300px] p-4 bg-[#1A1A1A] border-[#333333]"}
+            >
                 <DialogTitle className="sr-only">Google Maps Features</DialogTitle>
                 <DialogDescription className="text-[11px] text-gray-400 leading-relaxed space-y-2">
                     <p>
