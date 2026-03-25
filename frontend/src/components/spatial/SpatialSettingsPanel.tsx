@@ -301,15 +301,15 @@ export default function SpatialSettingsPanel() {
                     ref={panelRef}
                     className="absolute top-10 right-0 w-[min(24rem,calc(100vw-2rem))] max-h-[min(38rem,calc(100vh-6rem))] overflow-y-auto rounded-xl border border-[#333333] bg-[#151515]/98 p-4 shadow-2xl backdrop-blur-sm"
                 >
-                    <div className="mb-4 flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                            <h2 className="text-sm font-medium text-white">Spatial Settings</h2>
-                            <p className="text-[12px] text-gray-500">
-                                Configure Google Maps access and geocoder behavior for this map.
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="space-y-0.5">
+                            <h3 className="text-sm font-medium text-white">Google Maps API Key</h3>
+                            <p className="text-[11px] text-gray-500">
+                                Required for Google tile layers and Google geocoding.
                             </p>
                         </div>
-                            <button
-                                type="button"
+                        <button
+                            type="button"
                             onClick={() => setIsOpen(false)}
                             className="rounded-md p-1 text-gray-500 transition-colors hover:bg-[#242424] hover:text-white"
                             aria-label="Close spatial settings"
@@ -323,53 +323,44 @@ export default function SpatialSettingsPanel() {
                             <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
                         </div>
                     ) : (
-                        <div className="space-y-6">
-                            <div className="space-y-3">
-                                <div className="space-y-1">
-                                    <h3 className="text-sm font-medium text-white">Google Maps API Key</h3>
-                                    <p className="text-[12px] text-gray-500">
-                                        Required for Google tile layers and Google geocoding.
-                                    </p>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <Input
+                                        type={showKey ? "text" : "password"}
+                                        value={apiKey}
+                                        onChange={(e) => {
+                                            setApiKey(e.target.value)
+                                            setSaved(false)
+                                        }}
+                                        placeholder="Enter your Google Maps API key..."
+                                        className="w-full pr-10 h-10 text-[13px] bg-[#1A1A1A] border border-[#333333] text-white placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-gray-500 rounded-md"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowKey((current) => !current)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-300"
+                                    >
+                                        {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
                                 </div>
-
-                                <div className="space-y-2">
-                                    <div className="relative">
-                                        <Input
-                                            type={showKey ? "text" : "password"}
-                                            value={apiKey}
-                                            onChange={(e) => {
-                                                setApiKey(e.target.value)
-                                                setSaved(false)
-                                            }}
-                                            placeholder="Enter your Google Maps API key..."
-                                            className="w-full pr-10 h-10 text-[13px] bg-[#1A1A1A] border border-[#333333] text-white placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-gray-500 rounded-md"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowKey((current) => !current)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-300"
-                                        >
-                                            {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                                        </button>
-                                    </div>
-                                    {hasExistingKey && !saved && (
-                                        <p className="text-[11px] font-medium text-gray-500">Key configured</p>
-                                    )}
-                                    {hasExistingKey && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowClearConfirm(true)}
-                                            className="text-[11px] text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            disabled={isSaving}
-                                        >
-                                            <X size={12} />
-                                            Clear API key
-                                        </button>
-                                    )}
-                                </div>
+                                {hasExistingKey && !saved && (
+                                    <p className="text-[11px] font-medium text-gray-500">Key configured</p>
+                                )}
+                                {hasExistingKey && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowClearConfirm(true)}
+                                        className="text-[11px] text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled={isSaving}
+                                    >
+                                        <X size={12} />
+                                        Clear API key
+                                    </button>
+                                )}
                             </div>
 
-                            <div className="space-y-4 border-t border-[#2A2A2A] pt-5">
+                            <div className="space-y-4 border-t border-[#2A2A2A] pt-4">
                                 <div className="space-y-1">
                                     <h3 className="text-sm font-medium text-white">Geocoder Provider</h3>
                                     <p className="text-[12px] text-gray-500">
@@ -380,10 +371,10 @@ export default function SpatialSettingsPanel() {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Provider</label>
-                                        <Select value={geocoderProvider} onValueChange={setGeocoderProvider}>
-                                            <SelectTrigger className="h-10 bg-[#1A1A1A] border border-[#333333] text-white rounded-md">
+                                        <Select value={tileSource === "google" ? geocoderProvider : effectiveProvider} onValueChange={setGeocoderProvider}>
+                                            <SelectTrigger disabled={tileSource !== "google"} className="h-10 bg-[#1A1A1A] border border-[#333333] text-white rounded-md">
                                                 <SelectValue>
-                                                    {geocoderProvider === "google" ? "Google Maps" : "Nominatim"}
+                                                    {(tileSource === "google" ? geocoderProvider : effectiveProvider) === "google" ? "Google Maps" : "Nominatim"}
                                                 </SelectValue>
                                             </SelectTrigger>
                                             <SelectContent className="w-full">
@@ -399,49 +390,56 @@ export default function SpatialSettingsPanel() {
                                             </p>
                                         )}
                                         <div className="rounded-md border border-[#2A2A2A] bg-[#101010] px-3 py-2 text-[12px] text-gray-400">
-                                            {tileSource === "google"
-                                                ? `Current map uses ${effectiveProvider === "google" ? "Google Maps geocoding" : "Nominatim geocoding"}.`
-                                                : "Current map uses Nominatim geocoding. Google geocoding and autocomplete are restricted to the Google basemap."}
+                                            {tileSource !== "google"
+                                                ? "Provider selection is locked to Nominatim on OSM tiles. Switch to Google tiles to use Google geocoding."
+                                                : `Current map uses ${effectiveProvider === "google" ? "Google Maps geocoding" : "Nominatim geocoding"}.`}
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Nominatim Service URL</label>
-                                        <Input
-                                            value={nominatimBaseUrl}
-                                            onChange={(e) => {
-                                                setNominatimBaseUrl(e.target.value)
-                                                setSaved(false)
-                                            }}
-                                            placeholder={DEFAULT_NOMINATIM_URL}
-                                            className="h-10 text-[13px] bg-[#1A1A1A] border border-[#333333] text-white placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-gray-500 rounded-md"
-                                        />
-                                    </div>
+                                    {effectiveProvider === "nominatim" && (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Nominatim Service URL</label>
+                                                <Input
+                                                    value={nominatimBaseUrl}
+                                                    onChange={(e) => {
+                                                        setNominatimBaseUrl(e.target.value)
+                                                        setSaved(false)
+                                                    }}
+                                                    placeholder={DEFAULT_NOMINATIM_URL}
+                                                    className="h-10 text-[13px] bg-[#1A1A1A] border border-[#333333] text-white placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-gray-500 rounded-md"
+                                                />
+                                            </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Nominatim User-Agent</label>
-                                        <Input
-                                            value={nominatimUserAgent}
-                                            onChange={(e) => {
-                                                setNominatimUserAgent(e.target.value)
-                                                setSaved(false)
-                                            }}
-                                            placeholder={DEFAULT_NOMINATIM_USER_AGENT}
-                                            className="h-10 text-[13px] bg-[#1A1A1A] border border-[#333333] text-white placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-gray-500 rounded-md"
-                                        />
-                                        <p className="text-[12px] text-gray-500">
-                                            This app uses explicit submit-based search only. Public Nominatim autocomplete is disabled to comply with OSM policy.
-                                        </p>
-                                    </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Nominatim User-Agent</label>
+                                                <Input
+                                                    value={nominatimUserAgent}
+                                                    onChange={(e) => {
+                                                        setNominatimUserAgent(e.target.value)
+                                                        setSaved(false)
+                                                    }}
+                                                    placeholder={DEFAULT_NOMINATIM_USER_AGENT}
+                                                    className="h-10 text-[13px] bg-[#1A1A1A] border border-[#333333] text-white placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-gray-500 rounded-md"
+                                                />
+                                                <p className="text-[12px] text-gray-500">
+                                                    This app uses explicit submit-based search only. Public Nominatim autocomplete is disabled to comply with OSM policy.
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
 
                                     <div className="space-y-2 border-t border-[#2A2A2A] pt-4">
-                                        <h4 className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Google Terms</h4>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h4 className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Google Terms</h4>
+                                            {saved && <p className="text-[11px] font-medium text-gray-500">Saved</p>}
+                                        </div>
                                         <div className="space-y-1 text-[12px]">
                                             <a
                                                 href="https://cloud.google.com/maps-platform/terms"
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                className="text-gray-400 transition-colors hover:text-white"
+                                                className="block text-gray-400 transition-colors hover:text-white"
                                             >
                                                 Google Maps Platform Terms of Service
                                             </a>
@@ -462,28 +460,22 @@ export default function SpatialSettingsPanel() {
                                                 Google Privacy Policy
                                             </a>
                                         </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between gap-3 pt-1">
-                                        {saved ? (
-                                            <p className="text-[11px] font-medium text-gray-500">Spatial settings configured</p>
-                                        ) : (
-                                            <div />
-                                        )}
-                                        <Button
-                                            size="sm"
-                                            onClick={handleSaveAll}
-                                            disabled={isSaving}
-                                            className="bg-white text-black hover:bg-gray-200 text-[11px] font-bold uppercase tracking-wider h-10 px-6 shrink-0"
-                                        >
-                                            {isSaving ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : saved ? (
-                                                <><Check size={12} className="mr-1" /> Saved</>
-                                            ) : (
-                                                "Update"
-                                            )}
-                                        </Button>
+                                        <div className="flex justify-end pt-2">
+                                            <Button
+                                                size="sm"
+                                                onClick={handleSaveAll}
+                                                disabled={isSaving}
+                                                className="bg-white text-black hover:bg-gray-200 text-[11px] font-bold uppercase tracking-wider h-10 px-6 shrink-0"
+                                            >
+                                                {isSaving ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : saved ? (
+                                                    <><Check size={12} className="mr-1" /> Saved</>
+                                                ) : (
+                                                    "Update"
+                                                )}
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

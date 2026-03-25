@@ -534,7 +534,7 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
             <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between items-start pointer-events-none">
                 {/* Search Bar */}
                 <div ref={searchContainerRef} className="pointer-events-auto w-full max-w-[320px] shadow-lg relative">
-                    <form onSubmit={handleSearch} className="flex gap-2">
+                    <form onSubmit={handleSearch}>
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
                             value={searchQuery}
@@ -548,19 +548,11 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
                             }}
                             onKeyDown={handleSearchKeyDown}
                             placeholder="Search location and press Enter..."
-                            className="pl-9 h-8 flex-1 !bg-[#1f1f1f] hover:!bg-[#262626] focus:!bg-[#262626] !border-[#414141] text-white placeholder:text-muted-foreground placeholder:text-[11px] text-xs focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors shadow-md"
+                            className="pl-9 pr-3 h-8 w-full !bg-[#1f1f1f] hover:!bg-[#262626] focus:!bg-[#262626] !border-[#414141] text-white placeholder:text-muted-foreground placeholder:text-[11px] text-xs focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors shadow-md"
                         />
                         {(isSearching || isLoadingSuggestions) && (
                             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 animate-spin" />
                         )}
-                        <Button
-                            type="submit"
-                            size="sm"
-                            disabled={!searchQuery.trim() || isSearching}
-                            className="h-8 px-3 !bg-[#1f1f1f] border border-[#414141] shadow-lg hover:!bg-[#333333] !text-[#fafafa] text-[10px] font-bold uppercase tracking-wider"
-                        >
-                            Search
-                        </Button>
                     </form>
 
                     {showSuggestions && suggestions.length > 0 && (
