@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from enum import Enum
 
 # ENUMS
@@ -403,3 +403,115 @@ class TileSessionStatusResponse(BaseModel):
 class TileViewportResponse(BaseModel):
     """Viewport attribution for the currently displayed Google tiles."""
     copyright: str
+
+# DB VIEWER MODELS
+
+
+class ExportFormat(str, Enum):
+    """Supported export formats."""
+    CSV = "csv"
+    JSON = "json"
+
+
+class DatabaseInfo(BaseModel):
+    """Information about a single database file."""
+    name: str
+    relativePath: str
+    size: int
+    tableCount: Optional[int] = None
+
+
+class DatabasesResponse(BaseModel):
+    """Response containing list of available databases."""
+    databases: List[DatabaseInfo]
+
+
+class TableColumn(BaseModel):
+    """Column information for a table."""
+    cid: int
+    name: str
+    type: str
+    notNull: bool
+    defaultValue: Optional[str] = None
+    primaryKeyPosition: int
+
+
+class TableIndex(BaseModel):
+    """Index information for a table."""
+    name: str
+    unique: bool
+    origin: str
+    partial: bool
+    columns: List[str]
+
+
+class ForeignKey(BaseModel):
+    """Foreign key information for a table."""
+    table: str
+    from_column: str
+    to: str
+    on_update: str
+    on_delete: str
+    match: str
+
+
+class TableInfo(BaseModel):
+    """Detailed information about a single table."""
+    name: str
+    sql: Optional[str] = None
+    columns: List[TableColumn]
+    indexes: List[TableIndex]
+    foreignKeys: List[ForeignKey]
+    rowCount: int
+
+
+class ViewInfo(BaseModel):
+    """Information about a view."""
+    name: str
+    sql: str
+
+
+class TriggerInfo(BaseModel):
+    """Information about a trigger."""
+    name: str
+    sql: str
+    table: Optional[str] = None
+
+
+class DatabaseSchema(BaseModel):
+    """Complete database schema structure."""
+    tables: List[TableInfo]
+    indexes: List[TriggerInfo]
+    views: List[ViewInfo]
+    triggers: List[TriggerInfo]
+
+
+class TableDataRequest(BaseModel):
+    """Request for paginated table data."""
+    page: int = 0
+    pageSize: int = 50
+    globalFilter: Optional[str] = None
+    sortColumn: Optional[str] = None
+    sortDirection: Optional[str] = None
+
+
+class TableData(BaseModel):
+    """Paginated table data response."""
+    columns: List[str]
+    rows: List[List[Any]]
+    rowCount: int
+    page: int
+    pageSize: int
+
+
+class QueryRequest(BaseModel):
+    """Request for SQL query execution."""
+    sql: str
+
+
+class QueryResult(BaseModel):
+    """Result of SQL query execution."""
+    columns: List[str]
+    rows: List[List[Any]]
+    rowCount: int
+    durationMs: int
