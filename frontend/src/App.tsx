@@ -12,6 +12,7 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage'))
 const AnalysisPage = lazy(() => import('./pages/AnalysisPage'))
 const ExtractionPage = lazy(() => import('./pages/ExtractionPage'))
 const SpatialPage = lazy(() => import('./pages/SpatialPage'))
+const DBViewerPage = lazy(() => import('./pages/DBViewerPage'))
 
 function App() {
     return (
@@ -36,6 +37,7 @@ function App() {
                             <Route path="/ios-backup" element={<Navigate to="/extraction?type=ios" replace />} />
                             <Route path="/android-backup" element={<Navigate to="/extraction?type=android" replace />} />
                             <Route path="/spatial" element={<SpatialPage />} />
+                            <Route path="/db-viewer" element={<DBViewerPage />} />
                         </Route>
                     </Routes>
                 </Suspense>

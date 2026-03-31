@@ -5,7 +5,8 @@ import {
     Box,
     PanelLeft,
     Archive,
-    ChevronLeft
+    ChevronLeft,
+    Database
 } from "lucide-react"
 
 import {
@@ -56,6 +57,11 @@ const data = {
             title: "GeoSpatial",
             url: "/spatial",
             icon: Box,
+        },
+        {
+            title: "Database",
+            url: "/db-viewer",
+            icon: Database,
         },
     ],
 }
