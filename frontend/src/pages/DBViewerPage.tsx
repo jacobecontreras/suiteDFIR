@@ -69,7 +69,7 @@ function DBViewerContent() {
 
     if (!selectedCaseId) {
         return (
-            <div className="h-full w-full flex items-center justify-center text-[#666]">
+            <div className="h-full w-full flex items-center justify-center text-[#666] py-[3vh] px-[9vh]">
                 <div className="text-center">
                     <Database className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <p className="text-lg">Select a case to view databases</p>
@@ -88,7 +88,7 @@ function DBViewerContent() {
 
     if (availableDatabases.length === 0) {
         return (
-            <div className="h-full w-full flex items-center justify-center text-[#666]">
+            <div className="h-full w-full flex items-center justify-center text-[#666] py-[3vh] px-[9vh]">
                 <div className="text-center">
                     <Database className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <p className="text-lg">No databases found in this case</p>
@@ -99,7 +99,7 @@ function DBViewerContent() {
     }
 
     return (
-        <div className="h-full w-full flex flex-col bg-[#151515]">
+        <div className="h-full w-full flex flex-col bg-[#151515] py-[3vh] px-[9vh] text-white">
             <DBViewerMain
                 availableDatabases={availableDatabases}
                 selectedDatabase={selectedDatabase}

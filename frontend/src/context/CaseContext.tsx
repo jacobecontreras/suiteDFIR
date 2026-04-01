@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { Case } from "@/components/cases/CaseFormDialog"
+import { API } from '@/lib/api'
 
 interface CaseContextType {
     selectedCaseId: string | null
@@ -19,6 +20,30 @@ export function CaseProvider({ children }: { children: React.ReactNode }) {
         typeof window !== 'undefined' ? localStorage : null
     );
     const [cases, setCases] = useState<Case[]>([])
+
+    useEffect(() => {
+        let isMounted = true
+
+        const fetchCases = async () => {
+            try {
+                const res = await fetch(API.path('/cases'))
+                if (!res.ok) return
+
+                const data = await res.json()
+                if (isMounted) {
+                    setCases(data)
+                }
+            } catch (error) {
+                console.error('Failed to fetch cases:', error)
+            }
+        }
+
+        fetchCases()
+
+        return () => {
+            isMounted = false
+        }
+    }, [])
 
     return (
         <CaseContext.Provider value={{ selectedCaseId, setSelectedCaseId, cases, setCases }}>

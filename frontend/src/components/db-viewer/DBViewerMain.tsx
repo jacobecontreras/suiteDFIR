@@ -17,7 +17,7 @@ export function DBViewerMain({ availableDatabases, selectedDatabase, onDatabaseC
 
     return (
         <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as TabType)} className="h-full flex flex-col">
-            <div className="px-3 py-4 flex items-center justify-between">
+            <div className="pb-3 flex items-center justify-between">
                 {/* Database selector - now on left */}
                 {availableDatabases.length > 0 && (
                     <Select

@@ -20,10 +20,14 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarRail,
+    SidebarSeparator,
     useSidebar,
 } from "@/components/ui/sidebar"
 
+import { useState, useEffect } from "react"
 import { useLocation, useNavigate, Link } from "react-router-dom"
+import { useCase } from "@/context/CaseContext"
 
 // Menu items.
 const data = {
@@ -68,16 +72,66 @@ const data = {
 
 export function AppSidebar() {
     const { toggleSidebar } = useSidebar()
+    const { selectedCaseId, cases } = useCase()
     const location = useLocation()
     const pathname = location.pathname
     const search = location.search
     const navigate = useNavigate()
 
+    const currentCase = cases.find(c => c.id.toString() === selectedCaseId)
+
+    const { state } = useSidebar()
+    const [isHeaderVisible, setIsHeaderVisible] = useState(state === "expanded")
+    const [isBackVisible, setIsBackVisible] = useState(state === "collapsed")
+
+    useEffect(() => {
+        if (state === "expanded") {
+            setIsBackVisible(false)
+            const timer = setTimeout(() => setIsHeaderVisible(true), 200)
+            return () => clearTimeout(timer)
+        } else {
+            setIsHeaderVisible(false)
+            setIsBackVisible(true)  // Instant, no delay
+        }
+    }, [state])
+
     return (
         <Sidebar collapsible="icon">
             <SidebarHeader className="pt-4 px-2 group-data-[state=collapsed]:px-0">
+                {currentCase && (
+                    <div className="flex flex-col relative min-h-[50px] mb-4">
+                        <div className={`px-4 flex flex-col gap-1.5 transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100 pointer-events-auto' : 'duration-0 opacity-0 pointer-events-none'}`}>
+                            <div className="font-['Oswald'] text-xl font-bold tracking-wide text-gray-200">
+                                suiteDFIR
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-gray-400 truncate max-w-[120px]" title={currentCase.name}>
+                                    {currentCase.name}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#1A1A1A] text-gray-400 border border-[#333333] whitespace-nowrap">
+                                    {currentCase.status}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className={`absolute top-0 left-0 right-0 h-[50px] flex items-center justify-center ${isBackVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+                            <SidebarMenuButton
+                                tooltip="Back to Cases"
+                                onClick={() => navigate('/cases')}
+                                className="h-10 w-10 hover:bg-sidebar-accent flex items-center justify-center text-sidebar-foreground/70"
+                            >
+                                <ChevronLeft className="h-5 w-5" />
+                            </SidebarMenuButton>
+                        </div>
+
+                        <div
+                            aria-hidden="true"
+                            className={`mt-4 -mx-2 -mr-[calc(0.5rem+1px)] h-px bg-[#222222] transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}
+                        />
+                    </div>
+                )}
                 <SidebarGroup>
-                    <SidebarGroupLabel className="text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider">Case</SidebarGroupLabel>
+                    <SidebarGroupLabel className={`text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>Case</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {data.case.map((item) => (
@@ -85,7 +139,7 @@ export function AppSidebar() {
                                     <SidebarMenuButton asChild tooltip={item.title} isActive={pathname === item.url}>
                                         <Link to={item.url}>
                                             <item.icon />
-                                            <span className="text-[11px] uppercase tracking-wider font-medium">{item.title}</span>
+                                            <span className={`text-[11px] uppercase tracking-wider font-medium transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>{item.title}</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
@@ -94,7 +148,7 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
                 <SidebarGroup>
-                    <SidebarGroupLabel className="text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider">Mobile Tools</SidebarGroupLabel>
+                    <SidebarGroupLabel className={`text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>Mobile Tools</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {data.mobile_tools.map((item) => {
@@ -108,7 +162,7 @@ export function AppSidebar() {
                                         <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
                                             <Link to={item.url}>
                                                 <item.icon />
-                                                <span className="text-[11px] uppercase tracking-wider font-medium">{item.title}</span>
+                                                <span className={`text-[11px] uppercase tracking-wider font-medium transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>{item.title}</span>
                                             </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
@@ -118,7 +172,7 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
                 <SidebarGroup>
-                    <SidebarGroupLabel className="text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider">Data Analysis</SidebarGroupLabel>
+                    <SidebarGroupLabel className={`text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>Data Analysis</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {data.data_analysis.map((item) => (
@@ -126,7 +180,7 @@ export function AppSidebar() {
                                     <SidebarMenuButton asChild tooltip={item.title} isActive={pathname === item.url}>
                                         <Link to={item.url}>
                                             <item.icon />
-                                            <span className="text-[11px] uppercase tracking-wider font-medium">{item.title}</span>
+                                            <span className={`text-[11px] uppercase tracking-wider font-medium transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>{item.title}</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
@@ -137,6 +191,8 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent />
+
+            <SidebarSeparator className="bg-[#222222] w-[85%] !mx-auto my-0 hidden group-data-[state=expanded]:block" />
 
             <SidebarFooter>
                 <SidebarMenu>
@@ -159,6 +215,7 @@ export function AppSidebar() {
                 </SidebarMenu>
             </SidebarFooter>
 
+            <SidebarRail />
         </Sidebar>
     )
 }

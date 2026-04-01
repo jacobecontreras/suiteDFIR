@@ -147,6 +147,7 @@ export function DataTable({
     startWidth: number
     startX: number
   } | null>(null)
+  const dragIndicatorRef = useRef<HTMLDivElement | null>(null)
   const tableRef = useRef<HTMLTableElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const overscan = 8
@@ -196,15 +197,45 @@ export function DataTable({
         return
       }
 
-      const nextWidth = Math.max(96, dragState.startWidth + (event.clientX - dragState.startX))
+      // Calculate bounds so visual indicator doesn't shrink below 96px width for the dragged column
+      const minClientX = dragState.startX - (dragState.startWidth - 96)
+      const safeClientX = Math.max(minClientX, event.clientX)
+
+      if (dragIndicatorRef.current && scrollContainerRef.current) {
+        const containerRect = scrollContainerRef.current.getBoundingClientRect()
+        dragIndicatorRef.current.style.left = `${safeClientX - containerRect.left}px`
+      }
+    }
+
+    const endDrag = (event: MouseEvent) => {
+      const dragState = dragStateRef.current
+      if (!dragState) {
+        return
+      }
+
+      // Apply the final calculated width to React state ONCE
+      const minClientX = dragState.startX - (dragState.startWidth - 96)
+      const safeClientX = Math.max(minClientX, event.clientX)
+      const nextWidth = Math.max(96, dragState.startWidth + (safeClientX - dragState.startX))
+
       setColumnWidths((currentWidths) => ({
         ...currentWidths,
         [dragState.column]: nextWidth,
       }))
+
+      dragStateRef.current = null
+      if (dragIndicatorRef.current) {
+        dragIndicatorRef.current.style.display = 'none'
+      }
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
     }
 
-    const endDrag = () => {
+    const handleBlur = () => {
       dragStateRef.current = null
+      if (dragIndicatorRef.current) {
+        dragIndicatorRef.current.style.display = 'none'
+      }
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
@@ -212,14 +243,15 @@ export function DataTable({
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', endDrag)
     // Also clear drag state on window blur (when user clicks outside browser)
-    window.addEventListener('blur', endDrag)
+    window.addEventListener('blur', handleBlur)
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', endDrag)
-      window.removeEventListener('blur', endDrag)
+      window.removeEventListener('blur', handleBlur)
       // Clear drag state and restore body styles if component unmounts during drag
       dragStateRef.current = null
+      if (dragIndicatorRef.current) dragIndicatorRef.current.style.display = 'none'
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
@@ -309,6 +341,12 @@ export function DataTable({
       startX: event.clientX,
     }
 
+    if (dragIndicatorRef.current && scrollContainerRef.current) {
+      const containerRect = scrollContainerRef.current.getBoundingClientRect()
+      dragIndicatorRef.current.style.display = 'block'
+      dragIndicatorRef.current.style.left = `${event.clientX - containerRect.left}px`
+    }
+
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
   }
@@ -327,7 +365,12 @@ export function DataTable({
   }
 
   return (
-    <div className={cn('min-h-0 overflow-hidden', className)}>
+    <div className={cn('min-h-0 overflow-hidden relative', className)}>
+      <div
+        ref={dragIndicatorRef}
+        className="absolute top-0 bottom-0 w-[2px] shadow-[0_0_4px_#3b82f6] bg-[#3b82f6] z-50 hidden"
+        style={{ pointerEvents: 'none' }}
+      />
       <div
         ref={scrollContainerRef}
         style={scrollClassName?.includes('h-full') ? undefined : { maxHeight: MAX_CONTAINER_HEIGHT }}
@@ -366,7 +409,7 @@ export function DataTable({
                       <span
                         role="separator"
                         aria-orientation="vertical"
-                        className="absolute top-[-8px] right-[-12px] h-[calc(100%+16px)] w-4 cursor-col-resize"
+                        className="absolute top-[-8px] right-[-12px] h-[calc(100%+16px)] w-6 cursor-col-resize z-10 hover:bg-white/10"
                         onMouseDown={(event) => startColumnResize(event, column)}
                       />
                     ) : null}

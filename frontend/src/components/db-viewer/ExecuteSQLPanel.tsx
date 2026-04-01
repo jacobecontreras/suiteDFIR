@@ -214,18 +214,39 @@ export function ExecuteSQLPanel() {
     const activeResult = queryResults.find((r) => r.id === activeResultId)
 
     return (
-        <div className="h-full w-full flex flex-col bg-[#151515]">
+        <div className="h-full w-full flex flex-col gap-3 bg-[#151515]">
             {/* Error banner - only shown when there's an error */}
             {localError ? (
-                <div className="p-3 pb-0">
-                    <div className="rounded-lg border border-red-500/50 bg-[#2a2a2a] px-3 py-2 text-sm text-red-400">
-                        {localError}
-                    </div>
+                <div className="rounded-lg border border-red-500/50 bg-[#2a2a2a] px-3 py-2 text-sm text-red-400">
+                    {localError}
                 </div>
             ) : null}
 
+            {/* Toolbar */}
+            <div className="flex items-center justify-end gap-2 text-[#888]">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!activeResult}
+                        onClick={() => handleExport('csv')}
+                        className="h-9"
+                    >
+                        <Download className="h-4 w-4" />
+                        CSV
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!activeResult}
+                        onClick={() => handleExport('json')}
+                        className="h-9"
+                    >
+                        <Download className="h-4 w-4" />
+                        JSON
+                    </Button>
+                </div>
             {/* Side-by-side grid layout */}
-            <div className="grid min-h-0 flex-1 gap-3 overflow-hidden p-3 xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,0.58fr)]">
+            <div className="grid min-h-0 flex-1 gap-3 overflow-hidden xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,0.58fr)]">
                 {/* Left Panel - SQL Editor */}
                 <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[#333333] bg-[#171717]">
                     <div className="flex h-10 items-center gap-2 border-b border-[#333333] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[#888] bg-[#1A1A1A]">
@@ -240,21 +261,17 @@ export function ExecuteSQLPanel() {
                         placeholder="SELECT * FROM your_table LIMIT 100;"
                     />
 
-                    <div className="flex h-[52px] items-center justify-between gap-3 border-t border-[#333333] px-3 py-2">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-[#888]">
-                            Cmd/Ctrl + Enter executes
+                    <div className="flex h-[52px] items-center justify-between border-t border-[#333333] px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-wider text-[#888] truncate mr-2">
+                            Cmd/Ctrl + Enter to run
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button variant="secondary" size="sm" onClick={() => setSql(DEFAULT_QUERY)}>
-                                <PlusSquare className="h-4 w-4" />
+                        <div className="flex items-center gap-2 shrink-0">
+                            <Button variant="secondary" size="sm" className="h-8 px-2.5 text-[11px]" onClick={() => setSql(DEFAULT_QUERY)}>
+                                <PlusSquare className="h-3.5 w-3.5" />
                                 New Query
                             </Button>
-                            <Button size="sm" onClick={runQuery} disabled={!selectedDatabase || isExecutingQuery}>
-                                {isExecutingQuery ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Play className="h-4 w-4" />
-                                )}
+                            <Button size="sm" onClick={runQuery} className="h-8 px-3 text-[11px]" disabled={!selectedDatabase || isExecutingQuery}>
+                                {isExecutingQuery ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                                 {isExecutingQuery ? 'Running...' : 'Execute'}
                             </Button>
                         </div>
@@ -397,28 +414,6 @@ export function ExecuteSQLPanel() {
                             </span>
                         </div>
                         <div className="flex items-center gap-3">
-                            {activeResult && (
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleExport('csv')}
-                                        className="h-8 px-2"
-                                    >
-                                        <Download className="h-3.5 w-3.5" />
-                                        CSV
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleExport('json')}
-                                        className="h-8 px-2"
-                                    >
-                                        <Download className="h-3.5 w-3.5" />
-                                        JSON
-                                    </Button>
-                                </div>
-                            )}
                             <span className="truncate text-right text-[11px] uppercase tracking-[0.18em] text-[#888]">
                                 Active:{' '}
                                 <span className="font-medium text-white">

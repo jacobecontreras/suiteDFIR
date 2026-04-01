@@ -337,10 +337,9 @@ export function StructurePanel() {
     }
 
     return (
-        <div className="h-full w-full flex flex-col bg-[#151515]">
+        <div className="h-full w-full flex flex-col gap-3 bg-[#151515]">
             {/* Search bar */}
-            <div className="flex flex-col gap-3 p-3 pb-0">
-                <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                     <label className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-[#2a2a2a] px-3 h-9 text-xs text-[#888] lg:w-80">
                         <Search className="h-4 w-4 shrink-0" />
                         <input
@@ -372,17 +371,15 @@ export function StructurePanel() {
                         </Button>
                     </div>
                 </div>
-            </div>
-
             {/* Schema table */}
-            <div className="flex-1 min-h-0 overflow-hidden px-3 pt-3 pb-3">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 <DataTable
                     columns={STRUCTURE_COLUMNS}
                     rows={tableData}
                     emptyMessage="No schema objects match the current search."
                     getRowKey={getRowKey}
                     onRowClick={handleRowClick}
-                    className="h-full"
+                    className="h-full border border-[#333333] rounded-lg"
                     scrollClassName="h-full max-h-full"
                     cellClassName={({ column }) =>
                         column === 'Schema' ? 'max-w-none whitespace-nowrap' : undefined

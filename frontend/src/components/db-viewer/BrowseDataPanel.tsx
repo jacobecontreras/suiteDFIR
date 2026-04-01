@@ -210,10 +210,9 @@ export function BrowseDataPanel() {
     const hasData = tableData && tableData.rows.length > 0
 
     return (
-        <div className="h-full w-full flex flex-col bg-[#151515]">
+        <div className="h-full w-full flex flex-col gap-3 bg-[#151515]">
             {/* Toolbar */}
-            <div className="flex flex-col gap-3 p-3 pb-0">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {/* Table selector - always shown when database is selected */}
                         <Select value={selectedTable || ''} onValueChange={setSelectedTable}>
@@ -268,10 +267,8 @@ export function BrowseDataPanel() {
                         </div>
                     )}
                 </div>
-            </div>
-
             {/* Data table */}
-            <div className="flex-1 overflow-hidden min-h-0 px-3 pt-3 pb-3">
+            <div className="flex-1 overflow-hidden min-h-0">
                 {!selectedTable ? (
                     <div className="h-full flex items-center justify-center text-[#888]">
                         Choose a table to browse its data.
@@ -288,7 +285,7 @@ export function BrowseDataPanel() {
                     <DataTable
                         columns={tableData.columns}
                         rows={tableData.rows}
-                        className="h-full"
+                        className="h-full border border-[#333333] rounded-lg"
                         columnTooltips
                         emptyMessage="No data found"
                         highlightTerms={[deferredGlobalFilter]}
@@ -303,7 +300,7 @@ export function BrowseDataPanel() {
 
             {/* Pagination controls */}
             {selectedTable && tableData && (
-                <div className="border-t border-white/10 px-3 py-2">
+                <div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         {/* Row count info */}
                         <p className="flex h-9 items-center gap-1.5 text-xs text-[#888]">
