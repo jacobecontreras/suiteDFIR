@@ -1,4 +1,6 @@
 import logging
+import shutil
+import tempfile
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
@@ -120,6 +122,59 @@ async def delete_backup(backup_id: int):
         return MessageResponse.model_validate(result)
     except (FileNotFoundError, ValueError):
         raise HTTPException(status_code=404, detail="Backup not found")
+
+@router.get("/{backup_id}/download")
+async def download_backup(backup_id: int, background_tasks: BackgroundTasks):
+    """Zip and download backup directory."""
+    row = await db_fetch_one("SELECT id, name, path FROM backups WHERE id = ?", (backup_id,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Backup not found")
+
+    backup_path = row['path']
+    if not os.path.exists(backup_path):
+        raise HTTPException(status_code=404, detail="Backup directory not found on disk")
+
+    # Path validation
+    from utils.fs_ops import FileOperations
+    if not FileOperations.validate_path_security(backup_path, BACKUPS_DIR):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    def _zip():
+        temp_dir = None
+        try:
+            temp_dir = tempfile.mkdtemp()
+            zip_name = f"{row['name']}.zip"
+            zip_path = os.path.join(temp_dir, zip_name)
+            base_name = os.path.splitext(zip_path)[0]
+            shutil.make_archive(base_name, 'zip', backup_path)
+            final_zip_path = base_name + ".zip"
+            return {"zip_path": final_zip_path, "filename": zip_name, "temp_dir": temp_dir}
+        except Exception as e:
+            if temp_dir and os.path.exists(temp_dir):
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception:
+                    pass
+            raise
+
+    import asyncio
+    loop = asyncio.get_running_loop()
+    try:
+        result = await loop.run_in_executor(None, _zip)
+        zip_path = result["zip_path"]
+        temp_dir = result["temp_dir"]
+
+        # Schedule cleanup of the temp directory containing the zip
+        background_tasks.add_task(shutil.rmtree, temp_dir, ignore_errors=True)
+
+        return FileResponse(
+            zip_path,
+            media_type='application/zip',
+            filename=result["filename"]
+        )
+    except Exception as e:
+        logger.error(f"Error zipping backup: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to zip backup: {str(e)}")
 
 @router.post("/open", response_model=MessageResponse)
 async def open_backup_location(path: str):
