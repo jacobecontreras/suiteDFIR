@@ -13,6 +13,8 @@ const AnalysisPage = lazy(() => import('./pages/AnalysisPage'))
 const ExtractionPage = lazy(() => import('./pages/ExtractionPage'))
 const SpatialPage = lazy(() => import('./pages/SpatialPage'))
 const DBViewerPage = lazy(() => import('./pages/DBViewerPage'))
+const LibraryPage = lazy(() => import('./pages/LibraryPage'))
+const BackupsListPage = lazy(() => import('./pages/BackupsListPage'))
 
 function App() {
     return (
@@ -29,7 +31,15 @@ function App() {
                         {/* Main layout routes (with sidebar) */}
                         <Route element={<MainLayout />}>
                             <Route path="/dashboard" element={<DashboardPage />} />
-                            <Route path="/reports" element={<ReportsPage />} />
+
+                            {/* Library routes */}
+                            <Route path="/library" element={<LibraryPage />} />
+                            <Route path="/library/reports" element={<ReportsPage />} />
+                            <Route path="/library/backups" element={<BackupsListPage />} />
+
+                            {/* Legacy redirect for /reports */}
+                            <Route path="/reports" element={<Navigate to="/library/reports" replace />} />
+
                             <Route path="/analysis" element={<AnalysisPage />} />
                             <Route path="/extraction" element={<ExtractionPage />} />
                             <Route path="/ileapp" element={<Navigate to="/analysis?tool=ileapp" replace />} />

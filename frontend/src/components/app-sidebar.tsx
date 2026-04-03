@@ -1,6 +1,5 @@
 import {
     LayoutDashboard,
-    FileText,
     Smartphone,
     Box,
     PanelLeft,
@@ -20,7 +19,6 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-    SidebarRail,
     SidebarSeparator,
     useSidebar,
 } from "@/components/ui/sidebar"
@@ -38,9 +36,9 @@ const data = {
             icon: LayoutDashboard,
         },
         {
-            title: "Reports",
-            url: "/reports",
-            icon: FileText,
+            title: "Library",
+            url: "/library",
+            icon: Archive,
         },
     ],
     mobile_tools: [
@@ -134,16 +132,23 @@ export function AppSidebar() {
                     <SidebarGroupLabel className={`text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>Case</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {data.case.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild tooltip={item.title} isActive={pathname === item.url}>
-                                        <Link to={item.url}>
-                                            <item.icon />
-                                            <span className={`text-[11px] uppercase tracking-wider font-medium transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>{item.title}</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {data.case.map((item) => {
+                                // For Library, highlight for all /library/* paths
+                                const isActive = item.url === '/library'
+                                    ? pathname.startsWith('/library')
+                                    : pathname === item.url;
+
+                                return (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
+                                            <Link to={item.url}>
+                                                <item.icon />
+                                                <span className={`text-[11px] uppercase tracking-wider font-medium transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                );
+                            })}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
@@ -214,8 +219,6 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarFooter>
-
-            <SidebarRail />
         </Sidebar>
     )
 }
