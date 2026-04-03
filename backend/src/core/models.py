@@ -515,3 +515,34 @@ class QueryResult(BaseModel):
     rows: List[List[Any]]
     rowCount: int
     durationMs: int
+
+# EXPORT JOB MODELS
+
+class ExportJobStatus(str, Enum):
+    """Export job status states."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ExportJobCreate(BaseModel):
+    """Payload for creating an export job."""
+    case_id: int
+
+
+class ExportJobResponse(BaseModel):
+    """Response model for an export job."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    case_id: int
+    status: ExportJobStatus
+    file_path: Optional[str] = None
+    created_at: str
+    completed_at: Optional[str] = None
+
+
+class ExportStarted(BaseModel):
+    """Response when export job is created."""
+    job_id: int
+    message: str

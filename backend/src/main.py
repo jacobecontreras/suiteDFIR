@@ -28,7 +28,7 @@ from core.config import BASE_DIR
 IS_DEV = os.environ.get('SUITEDFIR_DEV', 'false').lower() == 'true'
 
 from services.plugin_manager import load_plugins
-from api import cases, reports, profiles, dashboard, processing, backups, system, tools, settings, tiles, db_viewer
+from api import cases, reports, profiles, dashboard, processing, backups, system, tools, settings, tiles, db_viewer, case_exports
 from utils.device_watcher import start_device_watcher, stop_device_watcher
 from services.case_manager import case_manager
 
@@ -104,6 +104,7 @@ app.include_router(tools.router)
 app.include_router(settings.router)
 app.include_router(tiles.router)
 app.include_router(db_viewer.router)
+app.include_router(case_exports.router)
 
 from core.config import TOOLS_CONFIG, REPORTS_DIR, BACKUPS_DIR, TOOLS_DIR, DATA_DIR
 

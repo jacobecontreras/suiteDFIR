@@ -86,6 +86,17 @@ SCHEMA = {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_visited_at TIMESTAMP
         )
+    """,
+    "export_jobs": """
+        CREATE TABLE IF NOT EXISTS export_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_id INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            file_path TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            FOREIGN KEY (case_id) REFERENCES cases(id)
+        )
     """
 }
 
