@@ -1,8 +1,6 @@
 import { ReactNode } from 'react'
 import Iphone15Pro from "@/components/ui/shadcn-io/iphone-15-pro"
 import AndroidPhone from "@/components/ui/shadcn-io/android-phone"
-import { cn } from "@/lib/utils"
-
 interface DeviceVisualizationProps {
     type: 'ios' | 'android'
     isConnected: boolean

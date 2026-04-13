@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { initBackendUrl, getBackendUrlSync } from '@/lib/api';
+import { initBackendUrl } from '@/lib/api';
 
 interface APIContextType {
     backendUrl: string;

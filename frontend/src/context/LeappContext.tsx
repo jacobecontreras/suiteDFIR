@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode, useMemo } from 'react'
 import { useCase } from './CaseContext';
 import { createLeappApi } from '../services/leappApi'
 import { Module } from '@/types/leapp';
@@ -257,7 +257,7 @@ export function LeappProvider({ children }: { children: ReactNode }) {
         }
     }, [updateConfig]);
 
-    const connectToStream = useCallback((tool: string, taskId: string, reportName?: string | null) => {
+    const connectToStream = useCallback((tool: string, taskId: string, _reportName?: string | null) => {
         // Close any existing connection for this tool
         if (eventSourceRefs.current[tool]) {
             eventSourceRefs.current[tool].close();

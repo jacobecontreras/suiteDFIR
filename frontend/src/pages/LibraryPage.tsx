@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Button } from '@/components/ui';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
     LibraryHeader,
     LibraryFilters,
@@ -14,8 +13,6 @@ import type {
     Backup,
     ExportStatus,
     LibraryCardHandlers,
-    ViewMode,
-    ReportFilter,
     BackupFilter,
     SortOption,
     LibraryFilterCounts
@@ -89,7 +86,7 @@ export default function LibraryPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [reportsRes, backupsRes] = await Promise.all([
+                const [reportsRes] = await Promise.all([
                     fetch(selectedCaseId ? API.path(`/reports?case_id=${selectedCaseId}`) : API.path('/reports')),
                     fetch(selectedCaseId ? API.path(`/backups?case_id=${selectedCaseId}`) : API.path('/backups'))
                 ]);
@@ -616,7 +613,6 @@ export default function LibraryPage() {
                 isOpen={!!reportToDelete}
                 title="Delete Report"
                 itemName={reportToDelete?.name || ''}
-                itemType="report"
                 onConfirm={executeDeleteReport}
                 onClose={() => setReportToDelete(null)}
             />
@@ -626,7 +622,6 @@ export default function LibraryPage() {
                 isOpen={!!backupToDelete}
                 title="Delete Backup"
                 itemName={backupToDelete?.name || ''}
-                itemType="backup"
                 onConfirm={executeDeleteBackup}
                 onClose={() => setBackupToDelete(null)}
             />

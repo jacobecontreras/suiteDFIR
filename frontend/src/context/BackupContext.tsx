@@ -76,7 +76,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
     // Scope persisted state by platform type
     const STORAGE_KEY_PREFIX = `suitedfir_backup_config_${type}_`;
 
-    const [state, setState, isLoaded] = useCasePersistedState<BackupPersistedState>(
+    const [state, setState] = useCasePersistedState<BackupPersistedState>(
         STORAGE_KEY_PREFIX,
         INITIAL_STATE
     );

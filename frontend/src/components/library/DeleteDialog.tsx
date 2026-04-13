@@ -4,7 +4,6 @@ export interface DeleteDialogProps {
     isOpen: boolean;
     title: string;
     itemName: string;
-    itemType: 'report' | 'backup';
     onConfirm: () => void;
     onClose: () => void;
 }
@@ -13,7 +12,6 @@ export function DeleteDialog({
     isOpen,
     title,
     itemName,
-    itemType,
     onConfirm,
     onClose
 }: DeleteDialogProps) {

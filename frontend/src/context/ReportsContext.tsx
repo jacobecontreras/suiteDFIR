@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import React, { createContext, useContext, useEffect, useCallback, useRef } from 'react'
 
 interface ReportViewState {
     scrollPosition: number;
@@ -47,7 +47,7 @@ interface ReportsContextType {
     isStateLoaded: boolean;
 }
 
-import { useCase } from './CaseContext';
+
 
 const ReportsContext = createContext<ReportsContextType | undefined>(undefined)
 

@@ -121,7 +121,7 @@ export default function RecentActivityWidget() {
                                 {activities.map((activity, i) => (
                                     <div
                                         key={`${activity.type}-${activity.id}`}
-                                        onClick={() => activity.type === 'report' && activity.path && navigate(`/reports?path=${encodeURIComponent(activity.path)}`)}
+                                        onClick={() => activity.type === 'report' && activity.path && navigate(`/library/reports?path=${encodeURIComponent(activity.path)}`)}
                                         className={`flex gap-3 relative z-10 p-2 rounded-lg transition-all duration-200 ${activity.type === 'report' ? 'cursor-pointer hover:bg-white/[0.03] group/item' : ''}`}
                                     >
                                         <div className="w-10 flex flex-col items-center shrink-0 relative">

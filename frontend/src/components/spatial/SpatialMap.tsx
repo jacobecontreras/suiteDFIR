@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, useMap, GeoJSON, useMapEvents, Marker } from "
 import "leaflet/dist/leaflet.css"
 import L from "leaflet"
 import MapControls from "./MapControls"
-import type { Feature, GeoJsonObject } from 'geojson'
+import type { GeoJsonObject } from 'geojson'
 import { API } from "@/lib/api"
 import { parseKmlText } from "@/lib/kmlUtils"
 import { onEachFeature } from "@/lib/mapUtils"
@@ -175,12 +175,11 @@ export default function SpatialMap() {
     const {
         center, setCenter,
         zoom, setZoom,
-        layer, setLayer,
+        layer,
         tileSource, setTileSource,
         selectedKmlsPaths, setSelectedKmlsPaths,
-        geoJsonData, geoJsonDataKey, setGeoJsonData,
+        geoJsonData, geoJsonDataKey,
         searchPin, setSearchPin,
-        refreshApiKey,
         apiKeyRefreshKey,
         isStateLoaded
     } = useSpatial()
@@ -475,13 +474,6 @@ export default function SpatialMap() {
         <div className="relative h-full w-full bg-black">
             <MapControls
                 onSearch={handleSearch}
-                onLayerChange={setLayer}
-                onTileSourceChange={(source, googleLayer) => {
-                    if (source === 'google' && googleLayer) {
-                        setLayer(googleLayer)
-                    }
-                }}
-                onDataUpload={setGeoJsonData}
                 onAddKmlData={addBrowsedKml}
                 onRemoveKmlData={removeBrowsedKml}
                 currentLayer={layer}

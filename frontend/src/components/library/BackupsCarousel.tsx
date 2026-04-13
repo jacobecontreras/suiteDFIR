@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import { Smartphone, FolderOpen, Download, Trash2 } from 'lucide-react';
 import { PhoneMockup } from '@/components/ui/PhoneMockup';
 import Iphone15Pro from '@/components/ui/shadcn-io/iphone-15-pro';

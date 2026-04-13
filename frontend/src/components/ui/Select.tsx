@@ -21,14 +21,12 @@ const Select = ({
     onValueChange,
     open: controlledOpen,
     onOpenChange,
-    searchable = false
 }: {
     children: React.ReactNode,
     value: string,
     onValueChange: (value: string) => void,
     open?: boolean,
     onOpenChange?: (open: boolean) => void,
-    searchable?: boolean
 }) => {
     const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState("")

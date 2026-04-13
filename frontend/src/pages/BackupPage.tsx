@@ -189,11 +189,6 @@ export default function ExtractionPage({ type, actionSlot }: ExtractionPageProps
         }
     };
 
-    const handleExport = async (path: string) => {
-        // Use the dedicated backup download endpoint
-        window.location.href = API.path(`/ios/backup/download?path=${encodeURIComponent(path)}`);
-    };
-
     const handleDeleteBackup = async (id: number) => {
         // Check if this is the last backup BEFORE deletion (more reliable than filtering)
         const isLastBackup = platformBackups.length === 1;

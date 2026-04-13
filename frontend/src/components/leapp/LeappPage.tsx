@@ -8,8 +8,7 @@ import { useLeapp } from '@/context/LeappContext';
 
 import { Button, Input, ConfirmDialog, LibraryCard, ItemLibrary } from '@/components/ui';
 import { useCase } from '@/context/CaseContext';
-import { FolderOpen, Calendar, Trash2, Loader2, Download, FileText } from 'lucide-react';
-import { LoadingPage } from '../ui/LoadingPage';
+import { FolderOpen, Calendar, Trash2, Download, FileText } from 'lucide-react';
 import { useConfirmDialog, useHistoricalLogs } from '@/hooks';
 
 import { API } from '@/lib/api';
@@ -352,6 +351,6 @@ function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionS
     );
 }
 
-export default function LeappPage({ tool, toolName, actionSlot }: LeappPageProps) {
+export default function LeappPage({ tool, actionSlot }: LeappPageProps) {
     return <LeappContent tool={tool} actionSlot={actionSlot} />;
 }

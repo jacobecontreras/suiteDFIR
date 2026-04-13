@@ -43,14 +43,6 @@ export async function initBackendUrl(): Promise<string> {
 }
 
 /**
- * Get the backend API base URL (async)
- * Initializes on first call if not already done
- */
-export async function getBackendUrl(): Promise<string> {
-    return initBackendUrl();
-}
-
-/**
  * Synchronous getter - returns cached URL or dev fallback
  * Use only after initBackendUrl() has been called
  */

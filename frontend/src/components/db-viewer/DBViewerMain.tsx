@@ -23,7 +23,6 @@ export function DBViewerMain({ availableDatabases, selectedDatabase, onDatabaseC
                     <Select
                         value={selectedDatabase?.relativePath || ''}
                         onValueChange={onDatabaseChange}
-                        searchable={true}
                     >
                         <SelectTrigger className="w-[360px] h-9 bg-[#2a2a2a] border border-white/10 text-white rounded-lg">
                             <SelectValue placeholder="Select database" />

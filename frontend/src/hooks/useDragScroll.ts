@@ -126,12 +126,12 @@ export function useDragScroll(
         dragDistanceRef.current = 0;
     }, []);
 
-    const onMouseLeave = useCallback((e: React.MouseEvent) => {
+    const onMouseLeave = useCallback((_e: React.MouseEvent) => {
         setIsDragging(false);
         dragDistanceRef.current = 0;
     }, []);
 
-    const onMouseUp = useCallback((e: React.MouseEvent) => {
+    const onMouseUp = useCallback((_e: React.MouseEvent) => {
         // If drag distance is below threshold, this is a click, let it propagate
         if (dragDistanceRef.current < dragThreshold) {
             // Allow normal click behavior

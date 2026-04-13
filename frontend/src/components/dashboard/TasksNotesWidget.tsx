@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { Plus, Trash2, CheckSquare, FileText, Check, PlusCircle, Smartphone, Database, Clock } from 'lucide-react'
+import { Plus, Trash2, CheckSquare, Check } from 'lucide-react'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/Select"
 import { useToast } from "@/hooks/use-toast"
 import { useCase } from "@/context/CaseContext"
@@ -77,7 +77,6 @@ export default function TasksNotesWidget() {
 
     const handleAdd = async () => {
         const currentInput = activeTab === 'tasks' ? taskInput : noteInput
-        const currentDescription = activeTab === 'tasks' ? taskDescription : noteDescription
 
         if (!currentInput.trim() || !selectedCaseId) return
 

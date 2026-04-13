@@ -57,7 +57,7 @@ export default function ModuleSelector({ tool, isProcessing, headerSlot }: Modul
     buttonRef: saveProfileButtonRef
   } = useDropdown();
 
-  const { states, fetchModules, toggleModule, selectAll, selectNone, updateConfig } = useLeapp();
+  const { states, toggleModule, selectAll, selectNone, updateConfig } = useLeapp();
   const toolState = states[tool];
   const { modules, isLoadingModules } = toolState;
   const { artifactScrollPos } = toolState.config;

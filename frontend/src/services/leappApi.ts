@@ -152,6 +152,3 @@ export function createLeappApi(tool: string) {
         },
     };
 }
-
-// Keep backward compatibility - default to iLEAPP
-export const ileappApi = createLeappApi('ileapp');

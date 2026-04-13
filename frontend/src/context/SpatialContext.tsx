@@ -38,8 +38,6 @@ interface SpatialContextType {
 
 const SpatialContext = createContext<SpatialContextType | undefined>(undefined)
 
-import { useCase } from './CaseContext';
-
 import { useCasePersistedState } from '@/hooks/useCasePersistedState';
 
 const STORAGE_KEY_PREFIX = 'suitedfir_spatial_state_';

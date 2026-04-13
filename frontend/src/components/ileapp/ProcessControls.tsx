@@ -18,7 +18,7 @@ interface ProcessControlsProps {
 export default function ProcessControls({ tool, inputFile, outputFolder, reportName, caseId, existingNames }: ProcessControlsProps) {
   const { states, startProcessing } = useLeapp();
   const toolState = states[tool];
-  const { isProcessing, progress, encryptionDetected } = toolState.processing;
+  const { isProcessing, encryptionDetected } = toolState.processing;
   const { selectedModules } = toolState.config;
   const { toast } = useToast();
 

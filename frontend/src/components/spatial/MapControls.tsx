@@ -70,10 +70,6 @@ const LayerPreview = ({ type, size = 'sm' }: { type: 'osm' | 'google-normal' | '
 
 interface MapControlsProps {
     onSearch: (lat: number, lon: number) => void
-    onLayerChange: (layer: 'normal' | 'satellite' | 'hybrid') => void
-    onTileSourceChange: (source: 'osm' | 'google', layer?: 'normal' | 'satellite' | 'hybrid') => void
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onDataUpload: (data: any) => void
     onAddKmlData: (url: string, data: any) => void
     onRemoveKmlData: (url: string) => void
     currentLayer: 'normal' | 'satellite' | 'hybrid'
@@ -82,8 +78,8 @@ interface MapControlsProps {
     hasGoogleApiKey: boolean
 }
 
-export default function MapControls({ onSearch, onLayerChange, onTileSourceChange, onDataUpload, onAddKmlData, onRemoveKmlData, currentLayer, currentTileSource, selectedCaseId, hasGoogleApiKey }: MapControlsProps) {
-    const { selectedKmlsPaths, setSelectedKmlsPaths, searchQuery, setSearchQuery, setSearchPin, tileSource, setTileSource, setLayer } = useSpatial()
+export default function MapControls({ onSearch, onAddKmlData, onRemoveKmlData, currentLayer, currentTileSource, selectedCaseId, hasGoogleApiKey }: MapControlsProps) {
+    const { selectedKmlsPaths, setSelectedKmlsPaths, searchQuery, setSearchQuery, setSearchPin, setTileSource, setLayer } = useSpatial()
     const { toast } = useToast()
     const [isSearching, setIsSearching] = useState(false)
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
@@ -344,8 +340,6 @@ export default function MapControls({ onSearch, onLayerChange, onTileSourceChang
         setIsProcessingImport(true)
 
         try {
-            const uploadedFileNames = importFiles.map(f => f.name)
-
             for (const file of importFiles) {
                 const formData = new FormData()
                 formData.append("file", file)

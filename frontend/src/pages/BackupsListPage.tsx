@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Smartphone, FolderOpen, Download, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui';
 import { LibraryCard } from '@/components/ui/LibraryCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';

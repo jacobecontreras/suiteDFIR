@@ -37,15 +37,8 @@ function App() {
                             <Route path="/library/reports" element={<ReportsPage />} />
                             <Route path="/library/backups" element={<BackupsListPage />} />
 
-                            {/* Legacy redirect for /reports */}
-                            <Route path="/reports" element={<Navigate to="/library/reports" replace />} />
-
                             <Route path="/analysis" element={<AnalysisPage />} />
                             <Route path="/extraction" element={<ExtractionPage />} />
-                            <Route path="/ileapp" element={<Navigate to="/analysis?tool=ileapp" replace />} />
-                            <Route path="/aleapp" element={<Navigate to="/analysis?tool=aleapp" replace />} />
-                            <Route path="/ios-backup" element={<Navigate to="/extraction?type=ios" replace />} />
-                            <Route path="/android-backup" element={<Navigate to="/extraction?type=android" replace />} />
                             <Route path="/spatial" element={<SpatialPage />} />
                             <Route path="/db-viewer" element={<DBViewerPage />} />
                         </Route>

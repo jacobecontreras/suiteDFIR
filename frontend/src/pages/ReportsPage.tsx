@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, FileText, FolderOpen, Download, Trash2, X, Maximize2 } from 'lucide-react';
-import { Button, LoadingPage, LibraryCard } from '@/components/ui/index';
+import { Search, FileText, FolderOpen, Trash2, X, Maximize2 } from 'lucide-react';
+import { LoadingPage, LibraryCard } from '@/components/ui/index';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { useCase } from "@/context/CaseContext";
-import { ReportsProvider, useReports, ReportIframeState } from '@/context/ReportsContext';
+import { useReports, ReportIframeState } from '@/context/ReportsContext';
 import { useSearchParams } from 'react-router-dom';
 import { Suspense } from 'react';
 import { API } from '@/lib/api';
@@ -39,7 +39,7 @@ function ReportsContent() {
     // Dialog hooks for each action
     const { config: deleteConfig, show: showDelete, hide: hideDelete, handleConfirm: handleDeleteConfirm } = useConfirmDialog();
     const { config: openConfig, show: showOpen, hide: hideOpen, handleConfirm: handleOpenConfirm } = useConfirmDialog();
-    const { config: downloadConfig, show: showDownload, hide: hideDownload, handleConfirm: handleDownloadConfirm } = useConfirmDialog();
+    const { config: downloadConfig, hide: hideDownload, handleConfirm: handleDownloadConfirm } = useConfirmDialog();
     const [searchParams] = useSearchParams();
 
     // Use context for persistent state
@@ -312,19 +312,6 @@ function ReportsContent() {
         } catch (error) {
             console.error('Failed to open report:', error);
         }
-    };
-
-    const handleDownloadClick = (report: Report) => {
-        showDownload({
-            title: 'Download Report',
-            message: `Are you sure you want to download ${report.name} as a ZIP archive?`,
-            confirmLabel: 'Download',
-            onConfirm: () => executeDownload(report.id)
-        });
-    };
-
-    const executeDownload = async (reportId: number) => {
-        window.location.href = API.path(`/reports/${reportId}/download`);
     };
 
     const handleDeleteClick = (report: Report) => {

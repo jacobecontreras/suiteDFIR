@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Database, Filte
 import { useDBViewer } from '@/context/DBViewerContext'
 import { API } from '@/lib/api'
 import { useCase } from '@/context/CaseContext'
-import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { DataTable } from '@/components/ui/DataTable'
@@ -207,7 +206,6 @@ export function BrowseDataPanel() {
     }
 
     const tables = schema?.tables || []
-    const hasData = tableData && tableData.rows.length > 0
 
     return (
         <div className="h-full w-full flex flex-col gap-3 bg-[#151515]">
