@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Smartphone, FolderOpen, Download, Trash2 } from 'lucide-react';
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { LibraryCard } from '@/components/ui/LibraryCard';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
+import { useDragScroll } from '@/hooks/useDragScroll';
 import { useCase } from '@/context/CaseContext';
 import { API } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -27,20 +30,13 @@ export default function BackupsListPage() {
     const { selectedCaseId } = useCase();
     const { toast } = useToast();
 
-    // Dialog states
-    const [backupToDelete, setBackupToDelete] = useState<Backup | null>(null);
-    const [backupToOpen, setBackupToOpen] = useState<Backup | null>(null);
-    const [backupToDownload, setBackupToDownload] = useState<Backup | null>(null);
+    // Dialog hooks for each action
+    const { config: deleteConfig, show: showDelete, hide: hideDelete, handleConfirm: handleDeleteConfirm } = useConfirmDialog();
+    const { config: openConfig, show: showOpen, hide: hideOpen, handleConfirm: handleOpenConfirm } = useConfirmDialog();
+    const { config: downloadConfig, show: showDownload, hide: hideDownload, handleConfirm: handleDownloadConfirm } = useConfirmDialog();
 
-    // Drag-to-scroll state
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const scrollbarRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [startX, setStartX] = useState(0);
-    const [scrollLeft, setScrollLeft] = useState(0);
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const [thumbWidth, setThumbWidth] = useState(20);
-    const [isScrollbarDragging, setIsScrollbarDragging] = useState(false);
+    // Drag-to-scroll hook
+    const dragScroll = useDragScroll([backups, filter, searchQuery, sort]);
 
     const fetchBackups = useCallback(async () => {
         try {
@@ -63,132 +59,55 @@ export default function BackupsListPage() {
         fetchBackups();
     }, [selectedCaseId, fetchBackups]);
 
-    // Track scroll position for custom scrollbar
-    useEffect(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-
-        const updateScrollProgress = () => {
-            const maxScroll = container.scrollWidth - container.clientWidth;
-            if (maxScroll > 0) {
-                setScrollProgress(container.scrollLeft / maxScroll);
-                setThumbWidth(Math.max(20, (container.clientWidth / container.scrollWidth) * 100));
-            } else {
-                setScrollProgress(0);
-                setThumbWidth(100);
-            }
-        };
-
-        const resizeObserver = new ResizeObserver(() => {
-            updateScrollProgress();
-        });
-
-        resizeObserver.observe(container);
-
-        const content = container.firstElementChild;
-        if (content) {
-            resizeObserver.observe(content);
-        }
-
-        container.addEventListener('scroll', updateScrollProgress);
-        updateScrollProgress();
-
-        return () => {
-            resizeObserver.disconnect();
-            container.removeEventListener('scroll', updateScrollProgress);
-        };
-    }, [backups, filter, searchQuery, sort]);
-
-    // Scrollbar drag handlers
-    const thumbOffsetRef = useRef(0);
-
-    const handleScrollbarMouseDown = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        if (!scrollbarRef.current) return;
-
-        const rect = scrollbarRef.current.getBoundingClientRect();
-        const thumbLeftPercent = scrollProgress * (100 - thumbWidth);
-        const thumbLeftPx = (thumbLeftPercent / 100) * rect.width;
-        const clickPositionInTrack = e.clientX - rect.left;
-        thumbOffsetRef.current = clickPositionInTrack - thumbLeftPx;
-
-        setIsScrollbarDragging(true);
-    }, [scrollProgress, thumbWidth]);
-
-    useEffect(() => {
-        if (!isScrollbarDragging) return;
-
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!scrollContainerRef.current || !scrollbarRef.current) return;
-
-            const rect = scrollbarRef.current.getBoundingClientRect();
-            const trackWidth = rect.width;
-            const thumbWidthPx = (thumbWidth / 100) * trackWidth;
-            const maxThumbLeft = trackWidth - thumbWidthPx;
-
-            const cursorPositionInTrack = e.clientX - rect.left;
-            const targetThumbLeft = cursorPositionInTrack - thumbOffsetRef.current;
-
-            const clampedThumbLeft = Math.max(0, Math.min(maxThumbLeft, targetThumbLeft));
-
-            const maxScroll = scrollContainerRef.current.scrollWidth - scrollContainerRef.current.clientWidth;
-            const scrollPercentage = maxThumbLeft > 0 ? clampedThumbLeft / maxThumbLeft : 0;
-            scrollContainerRef.current.scrollLeft = scrollPercentage * maxScroll;
-        };
-
-        const handleMouseUp = () => {
-            setIsScrollbarDragging(false);
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-
-        return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isScrollbarDragging, thumbWidth]);
-
     const handleOpenClick = (backup: Backup) => {
-        setBackupToOpen(backup);
+        showOpen({
+            title: 'Open Folder',
+            message: `Are you sure you want to open ${backup.name} in Finder?`,
+            confirmLabel: 'Open',
+            onConfirm: () => executeOpen(backup.path)
+        });
     };
 
-    const executeOpen = async () => {
-        if (!backupToOpen) return;
+    const executeOpen = async (path: string) => {
         try {
-            await fetch(API.path(`/backups/open?path=${encodeURIComponent(backupToOpen.path)}`), {
+            await fetch(API.path(`/backups/open?path=${encodeURIComponent(path)}`), {
                 method: 'POST'
             });
-            setBackupToOpen(null);
         } catch (error) {
             console.error('Failed to open backup:', error);
         }
     };
 
     const handleDownloadClick = (backup: Backup) => {
-        setBackupToDownload(backup);
+        showDownload({
+            title: 'Download Backup',
+            message: `Are you sure you want to download ${backup.name} as a ZIP archive?`,
+            confirmLabel: 'Download',
+            onConfirm: () => executeDownload(backup.id)
+        });
     };
 
-    const executeDownload = async () => {
-        if (!backupToDownload) return;
-        window.location.href = API.path(`/backups/${backupToDownload.id}/download`);
-        setBackupToDownload(null);
+    const executeDownload = async (backupId: number) => {
+        window.location.href = API.path(`/backups/${backupId}/download`);
     };
 
     const handleDeleteClick = (backup: Backup) => {
-        setBackupToDelete(backup);
+        showDelete({
+            title: 'Delete Backup',
+            message: `Are you sure you want to delete ${backup.name}? This action cannot be undone.`,
+            variant: 'destructive',
+            confirmLabel: 'Delete',
+            onConfirm: () => executeDelete(backup.id)
+        });
     };
 
-    const executeDelete = async () => {
-        if (!backupToDelete) return;
-
+    const executeDelete = async (backupId: number) => {
         try {
-            const response = await fetch(API.path(`/backups/${backupToDelete.id}`), {
+            const response = await fetch(API.path(`/backups/${backupId}`), {
                 method: 'DELETE'
             });
             if (response.ok) {
                 fetchBackups();
-                setBackupToDelete(null);
                 toast({
                     title: "Backup Deleted",
                     description: "Backup files have been removed.",
@@ -203,30 +122,6 @@ export default function BackupsListPage() {
             });
         }
     };
-
-    // Drag-to-scroll handlers
-    const handleMouseDown = useCallback((e: React.MouseEvent) => {
-        if (!scrollContainerRef.current) return;
-        setIsDragging(true);
-        setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
-        setScrollLeft(scrollContainerRef.current.scrollLeft);
-    }, []);
-
-    const handleMouseLeave = useCallback(() => {
-        setIsDragging(false);
-    }, []);
-
-    const handleMouseUp = useCallback(() => {
-        setIsDragging(false);
-    }, []);
-
-    const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        if (!isDragging || !scrollContainerRef.current) return;
-        e.preventDefault();
-        const x = e.pageX - scrollContainerRef.current.offsetLeft;
-        const walk = (x - startX) * 1.5;
-        scrollContainerRef.current.scrollLeft = scrollLeft - walk;
-    }, [isDragging, startX, scrollLeft]);
 
     const filteredBackups = backups
         .filter(b => {
@@ -304,13 +199,13 @@ export default function BackupsListPage() {
                 <div className="flex-1 flex flex-col gap-2 min-h-0 pb-2 pt-2 px-4">
                     {/* Horizontal Scrollable Backup Cards */}
                     <div
-                        ref={scrollContainerRef}
-                        className={`backup-cards-container flex-1 overflow-x-auto overflow-y-hidden min-h-0 [&::-webkit-scrollbar]:hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                        ref={dragScroll.scrollContainerRef}
+                        className={`backup-cards-container flex-1 overflow-x-auto overflow-y-hidden min-h-0 [&::-webkit-scrollbar]:hidden ${dragScroll.isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                        onMouseDown={handleMouseDown}
-                        onMouseLeave={handleMouseLeave}
-                        onMouseUp={handleMouseUp}
-                        onMouseMove={handleMouseMove}
+                        onMouseDown={dragScroll.onMouseDown}
+                        onMouseLeave={dragScroll.onMouseLeave}
+                        onMouseUp={dragScroll.onMouseUp}
+                        onMouseMove={dragScroll.onMouseMove}
                     >
                         {isLoading ? (
                             <div className="h-full flex items-center justify-center text-gray-500">Loading...</div>
@@ -375,130 +270,48 @@ export default function BackupsListPage() {
                 </div>
 
                 {/* Custom Scrollbar */}
-                {filteredBackups.length > 0 && thumbWidth < 100 && (
+                {filteredBackups.length > 0 && dragScroll.thumbWidth < 100 && (
                     <div
-                        ref={scrollbarRef}
+                        ref={dragScroll.scrollbarRef}
                         className="h-1 bg-white/5 rounded-full mx-4 relative cursor-pointer"
-                        onMouseDown={(e) => {
-                            if (!scrollContainerRef.current || !scrollbarRef.current) return;
-                            const rect = scrollbarRef.current.getBoundingClientRect();
-                            const clickX = e.clientX - rect.left;
-                            const percentage = clickX / rect.width;
-                            const maxScroll = scrollContainerRef.current.scrollWidth - scrollContainerRef.current.clientWidth;
-                            scrollContainerRef.current.scrollLeft = percentage * maxScroll;
-                        }}
+                        onMouseDown={dragScroll.onScrollbarTrackClick}
                     >
                         <div
-                            className={`absolute top-0 h-full bg-white/30 rounded-full transition-colors hover:bg-white/50 ${isScrollbarDragging ? 'bg-white/50' : ''}`}
+                            className={`absolute top-0 h-full bg-white/30 rounded-full transition-colors hover:bg-white/50 ${dragScroll.isScrollbarDragging ? 'bg-white/50' : ''}`}
                             style={{
-                                width: `${thumbWidth}%`,
-                                left: `${scrollProgress * (100 - thumbWidth)}%`,
-                                cursor: isScrollbarDragging ? 'grabbing' : 'grab',
+                                width: `${dragScroll.thumbWidth}%`,
+                                left: `${dragScroll.scrollProgress * (100 - dragScroll.thumbWidth)}%`,
+                                cursor: dragScroll.isScrollbarDragging ? 'grabbing' : 'grab',
                             }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();
-                                handleScrollbarMouseDown(e);
+                                dragScroll.onScrollbarMouseDown(e);
                             }}
                         />
                     </div>
                 )}
             </div>
 
-            {/* Delete Dialog */}
-            <Dialog open={backupToDelete !== null} onOpenChange={(open: boolean) => !open && setBackupToDelete(null)}>
-                <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333] rounded-xl shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Delete Backup</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-2">
-                        <p className="text-[11px] text-gray-400 leading-relaxed">
-                            Are you sure you want to delete <span className="text-white font-medium">{backupToDelete?.name}</span>? This action cannot be undone.
-                        </p>
-                    </div>
-                    <DialogFooter className="mt-2 flex gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-[#222] hover:bg-[#2a2a2a] text-gray-300 border border-white/5"
-                            onClick={() => setBackupToDelete(null)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-red-900/20 hover:bg-red-900/40 text-white border border-red-900/30"
-                            onClick={executeDelete}
-                        >
-                            Delete
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                config={deleteConfig}
+                onClose={hideDelete}
+                onConfirm={handleDeleteConfirm}
+            />
 
-            {/* Open Dialog */}
-            <Dialog open={backupToOpen !== null} onOpenChange={(open: boolean) => !open && setBackupToOpen(null)}>
-                <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333] rounded-xl shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Open Folder</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-2">
-                        <p className="text-[11px] text-gray-400 leading-relaxed">
-                            Are you sure you want to open <span className="text-white font-medium">{backupToOpen?.name}</span> in Finder?
-                        </p>
-                    </div>
-                    <DialogFooter className="mt-2 flex gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-[#222] hover:bg-[#2a2a2a] text-gray-300 border border-white/5"
-                            onClick={() => setBackupToOpen(null)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                            onClick={executeOpen}
-                        >
-                            Open
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Open Folder Dialog */}
+            <ConfirmDialog
+                config={openConfig}
+                onClose={hideOpen}
+                onConfirm={handleOpenConfirm}
+            />
 
             {/* Download Dialog */}
-            <Dialog open={backupToDownload !== null} onOpenChange={(open: boolean) => !open && setBackupToDownload(null)}>
-                <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333] rounded-xl shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Download Backup</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-2">
-                        <p className="text-[11px] text-gray-400 leading-relaxed">
-                            Are you sure you want to download <span className="text-white font-medium">{backupToDownload?.name}</span> as a ZIP archive?
-                        </p>
-                    </div>
-                    <DialogFooter className="mt-2 flex gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-[#222] hover:bg-[#2a2a2a] text-gray-300 border border-white/5"
-                            onClick={() => setBackupToDownload(null)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                            onClick={executeDownload}
-                        >
-                            Download
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                config={downloadConfig}
+                onClose={hideDownload}
+                onConfirm={handleDownloadConfirm}
+            />
         </div>
     );
 }

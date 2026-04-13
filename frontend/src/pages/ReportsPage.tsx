@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, FileText, FolderOpen, Download, Trash2, X, Maximize2 } from 'lucide-react';
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, LoadingPage, LibraryCard } from '@/components/ui/index';
+import { Button, LoadingPage, LibraryCard } from '@/components/ui/index';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
+import { useDragScroll } from '@/hooks/useDragScroll';
 import { useCase } from "@/context/CaseContext";
 import { ReportsProvider, useReports, ReportIframeState } from '@/context/ReportsContext';
 import { useSearchParams } from 'react-router-dom';
@@ -31,10 +34,12 @@ function ReportsContent() {
     const [reports, setReports] = useState<Report[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
-    const [reportToOpen, setReportToOpen] = useState<Report | null>(null);
-    const [reportToDownload, setReportToDownload] = useState<Report | null>(null);
     const { selectedCaseId } = useCase();
+
+    // Dialog hooks for each action
+    const { config: deleteConfig, show: showDelete, hide: hideDelete, handleConfirm: handleDeleteConfirm } = useConfirmDialog();
+    const { config: openConfig, show: showOpen, hide: hideOpen, handleConfirm: handleOpenConfirm } = useConfirmDialog();
+    const { config: downloadConfig, show: showDownload, hide: hideDownload, handleConfirm: handleDownloadConfirm } = useConfirmDialog();
     const [searchParams] = useSearchParams();
 
     // Use context for persistent state
@@ -66,16 +71,9 @@ function ReportsContent() {
         return null;
     });
 
-    // Drag-to-scroll state
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const scrollbarRef = useRef<HTMLDivElement>(null);
+    // Drag-to-scroll hook
+    const dragScroll = useDragScroll([reports, filter, searchQuery, sort]);
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [startX, setStartX] = useState(0);
-    const [scrollLeft, setScrollLeft] = useState(0);
-    const [scrollProgress, setScrollProgress] = useState(0);
-    const [thumbWidth, setThumbWidth] = useState(20);
-    const [isScrollbarDragging, setIsScrollbarDragging] = useState(false);
 
     // Track the previous report ID for saving scroll position on switch
     const previousReportIdRef = useRef<number | null>(null);
@@ -297,142 +295,59 @@ function ReportsContent() {
 
 
 
-    // Track scroll position for custom scrollbar
-    useEffect(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-
-        const updateScrollProgress = () => {
-            const maxScroll = container.scrollWidth - container.clientWidth;
-            if (maxScroll > 0) {
-                setScrollProgress(container.scrollLeft / maxScroll);
-                setThumbWidth(Math.max(20, (container.clientWidth / container.scrollWidth) * 100));
-            } else {
-                setScrollProgress(0);
-                setThumbWidth(100);
-            }
-        };
-
-        // Use ResizeObserver to catch changes in container size OR content size
-        const resizeObserver = new ResizeObserver(() => {
-            updateScrollProgress();
-        });
-
-        resizeObserver.observe(container);
-
-        // Also observe the first child (if it exists) to catch content shifts
-        const content = container.firstElementChild;
-        if (content) {
-            resizeObserver.observe(content);
-        }
-
-        container.addEventListener('scroll', updateScrollProgress);
-        updateScrollProgress();
-
-        return () => {
-            resizeObserver.disconnect();
-            container.removeEventListener('scroll', updateScrollProgress);
-        };
-    }, [reports, filter, searchQuery, sort]);
-
-    // Scrollbar drag handlers
-    const thumbOffsetRef = useRef(0);
-
-    const handleScrollbarMouseDown = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        if (!scrollbarRef.current) return;
-
-        // Calculate the offset from the left edge of the thumb to where the user clicked
-        const rect = scrollbarRef.current.getBoundingClientRect();
-        const thumbLeftPercent = scrollProgress * (100 - thumbWidth);
-        const thumbLeftPx = (thumbLeftPercent / 100) * rect.width;
-        const clickPositionInTrack = e.clientX - rect.left;
-        thumbOffsetRef.current = clickPositionInTrack - thumbLeftPx;
-
-        setIsScrollbarDragging(true);
-    }, [scrollProgress, thumbWidth]);
-
-    useEffect(() => {
-        if (!isScrollbarDragging) return;
-
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!scrollContainerRef.current || !scrollbarRef.current) return;
-
-            const rect = scrollbarRef.current.getBoundingClientRect();
-            const trackWidth = rect.width;
-            const thumbWidthPx = (thumbWidth / 100) * trackWidth;
-            const maxThumbLeft = trackWidth - thumbWidthPx;
-
-            // Calculate where the thumb's left edge should be based on cursor position
-            const cursorPositionInTrack = e.clientX - rect.left;
-            const targetThumbLeft = cursorPositionInTrack - thumbOffsetRef.current;
-
-            // Clamp to valid range
-            const clampedThumbLeft = Math.max(0, Math.min(maxThumbLeft, targetThumbLeft));
-
-            // Convert thumb position to scroll position
-            const maxScroll = scrollContainerRef.current.scrollWidth - scrollContainerRef.current.clientWidth;
-            const scrollPercentage = maxThumbLeft > 0 ? clampedThumbLeft / maxThumbLeft : 0;
-            scrollContainerRef.current.scrollLeft = scrollPercentage * maxScroll;
-        };
-
-        const handleMouseUp = () => {
-            setIsScrollbarDragging(false);
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-
-        return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isScrollbarDragging, thumbWidth]);
-
     const handleOpenClick = (report: Report) => {
-        setReportToOpen(report);
+        showOpen({
+            title: 'Open Folder',
+            message: `Are you sure you want to open ${report.name} in Finder?`,
+            confirmLabel: 'Open',
+            onConfirm: () => executeOpen(report.id)
+        });
     };
 
-    const executeOpen = async () => {
-        if (!reportToOpen) return;
+    const executeOpen = async (reportId: number) => {
         try {
-            await fetch(API.path(`/reports/${reportToOpen.id}/open`), {
+            await fetch(API.path(`/reports/${reportId}/open`), {
                 method: 'POST'
             });
-            setReportToOpen(null);
         } catch (error) {
             console.error('Failed to open report:', error);
         }
     };
 
     const handleDownloadClick = (report: Report) => {
-        setReportToDownload(report);
+        showDownload({
+            title: 'Download Report',
+            message: `Are you sure you want to download ${report.name} as a ZIP archive?`,
+            confirmLabel: 'Download',
+            onConfirm: () => executeDownload(report.id)
+        });
     };
 
-    const executeDownload = async () => {
-        if (!reportToDownload) return;
-        window.location.href = API.path(`/reports/${reportToDownload.id}/download`);
-        setReportToDownload(null);
+    const executeDownload = async (reportId: number) => {
+        window.location.href = API.path(`/reports/${reportId}/download`);
     };
 
     const handleDeleteClick = (report: Report) => {
-        setReportToDelete(report);
+        showDelete({
+            title: 'Delete Report',
+            message: `Are you sure you want to delete ${report.name}? This action cannot be undone.`,
+            variant: 'destructive',
+            confirmLabel: 'Delete',
+            onConfirm: () => executeDelete(report.id)
+        });
     };
 
-    const executeDelete = async () => {
-        if (!reportToDelete) return;
-
+    const executeDelete = async (reportId: number) => {
         try {
-            const response = await fetch(API.path(`/reports/${reportToDelete.id}`), {
+            const response = await fetch(API.path(`/reports/${reportId}`), {
                 method: 'DELETE'
             });
             if (response.ok) {
                 // If deleted report was selected, clear selection
-                if (selectedReportId === reportToDelete.id) {
+                if (selectedReportId === reportId) {
                     setSelectedReportId(null);
                 }
                 fetchReports(); // Refresh list
-                setReportToDelete(null); // Close dialog
             }
         } catch (error) {
             console.error('Failed to delete report:', error);
@@ -452,30 +367,6 @@ function ReportsContent() {
         }
         setSelectedReportId(report.id);
     };
-
-    // Drag-to-scroll handlers
-    const handleMouseDown = useCallback((e: React.MouseEvent) => {
-        if (!scrollContainerRef.current) return;
-        setIsDragging(true);
-        setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
-        setScrollLeft(scrollContainerRef.current.scrollLeft);
-    }, []);
-
-    const handleMouseLeave = useCallback(() => {
-        setIsDragging(false);
-    }, []);
-
-    const handleMouseUp = useCallback(() => {
-        setIsDragging(false);
-    }, []);
-
-    const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        if (!isDragging || !scrollContainerRef.current) return;
-        e.preventDefault();
-        const x = e.pageX - scrollContainerRef.current.offsetLeft;
-        const walk = (x - startX) * 1.5; // Scroll speed multiplier
-        scrollContainerRef.current.scrollLeft = scrollLeft - walk;
-    }, [isDragging, startX, scrollLeft]);
 
     const filteredReports = reports
         .filter(r => {
@@ -591,13 +482,13 @@ function ReportsContent() {
 
                         {/* Horizontal Scrollable Report Cards */}
                         <div
-                            ref={scrollContainerRef}
-                            className={`report-cards-container flex-1 overflow-x-auto overflow-y-hidden min-h-0 [&::-webkit-scrollbar]:hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                            ref={dragScroll.scrollContainerRef}
+                            className={`report-cards-container flex-1 overflow-x-auto overflow-y-hidden min-h-0 [&::-webkit-scrollbar]:hidden ${dragScroll.isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                            onMouseDown={handleMouseDown}
-                            onMouseLeave={handleMouseLeave}
-                            onMouseUp={handleMouseUp}
-                            onMouseMove={handleMouseMove}
+                            onMouseDown={dragScroll.onMouseDown}
+                            onMouseLeave={dragScroll.onMouseLeave}
+                            onMouseUp={dragScroll.onMouseUp}
+                            onMouseMove={dragScroll.onMouseMove}
                         >
                             {isLoading ? (
                                 <LoadingPage />
@@ -657,31 +548,23 @@ function ReportsContent() {
                     </div>
 
                     {/* Custom Minimal Scrollbar - Moved Outside Red Container */}
-                    {filteredReports.length > 0 && thumbWidth < 100 && (
+                    {filteredReports.length > 0 && dragScroll.thumbWidth < 100 && (
                         <div
-                            ref={scrollbarRef}
+                            ref={dragScroll.scrollbarRef}
                             className="h-1 bg-white/5 rounded-full mx-4 relative cursor-pointer"
-                            onMouseDown={(e) => {
-                                // Click to scroll to position
-                                if (!scrollContainerRef.current || !scrollbarRef.current) return;
-                                const rect = scrollbarRef.current.getBoundingClientRect();
-                                const clickX = e.clientX - rect.left;
-                                const percentage = clickX / rect.width;
-                                const maxScroll = scrollContainerRef.current.scrollWidth - scrollContainerRef.current.clientWidth;
-                                scrollContainerRef.current.scrollLeft = percentage * maxScroll;
-                            }}
+                            onMouseDown={dragScroll.onScrollbarTrackClick}
                         >
                             {/* Scrollbar Thumb */}
                             <div
-                                className={`absolute top-0 h-full bg-white/30 rounded-full transition-colors hover:bg-white/50 ${isScrollbarDragging ? 'bg-white/50' : ''}`}
+                                className={`absolute top-0 h-full bg-white/30 rounded-full transition-colors hover:bg-white/50 ${dragScroll.isScrollbarDragging ? 'bg-white/50' : ''}`}
                                 style={{
-                                    width: `${thumbWidth}%`,
-                                    left: `${scrollProgress * (100 - thumbWidth)}%`,
-                                    cursor: isScrollbarDragging ? 'grabbing' : 'grab',
+                                    width: `${dragScroll.thumbWidth}%`,
+                                    left: `${dragScroll.scrollProgress * (100 - dragScroll.thumbWidth)}%`,
+                                    cursor: dragScroll.isScrollbarDragging ? 'grabbing' : 'grab',
                                 }}
                                 onMouseDown={(e) => {
                                     e.stopPropagation();
-                                    handleScrollbarMouseDown(e);
+                                    dragScroll.onScrollbarMouseDown(e);
                                 }}
                             />
                         </div>
@@ -689,98 +572,26 @@ function ReportsContent() {
                 </div>
             )}
 
-            <Dialog open={reportToDelete !== null} onOpenChange={(open: boolean) => !open && setReportToDelete(null)}>
-                <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333] rounded-xl shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Delete Report</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-2">
-                        <p className="text-[11px] text-gray-400 leading-relaxed">
-                            Are you sure you want to delete <span className="text-white font-medium">{reportToDelete?.name}</span>? This action cannot be undone.
-                        </p>
-                    </div>
-                    <DialogFooter className="mt-2 flex gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-[#222] hover:bg-[#2a2a2a] text-gray-300 border border-white/5"
-                            onClick={() => setReportToDelete(null)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-red-900/20 hover:bg-red-900/40 text-white border border-red-900/30"
-                            onClick={executeDelete}
-                        >
-                            Delete
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                config={deleteConfig}
+                onClose={hideDelete}
+                onConfirm={handleDeleteConfirm}
+            />
 
-            <Dialog open={reportToOpen !== null} onOpenChange={(open: boolean) => !open && setReportToOpen(null)}>
-                <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333] rounded-xl shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Open Folder</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-2">
-                        <p className="text-[11px] text-gray-400 leading-relaxed">
-                            Are you sure you want to open <span className="text-white font-medium">{reportToOpen?.name}</span> in Finder?
-                        </p>
-                    </div>
-                    <DialogFooter className="mt-2 flex gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-[#222] hover:bg-[#2a2a2a] text-gray-300 border border-white/5"
-                            onClick={() => setReportToOpen(null)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                            onClick={executeOpen}
-                        >
-                            Open
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Open Folder Dialog */}
+            <ConfirmDialog
+                config={openConfig}
+                onClose={hideOpen}
+                onConfirm={handleOpenConfirm}
+            />
 
-            <Dialog open={reportToDownload !== null} onOpenChange={(open: boolean) => !open && setReportToDownload(null)}>
-                <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333] rounded-xl shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Download Report</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-2">
-                        <p className="text-[11px] text-gray-400 leading-relaxed">
-                            Are you sure you want to download <span className="text-white font-medium">{reportToDownload?.name}</span> as a ZIP archive?
-                        </p>
-                    </div>
-                    <DialogFooter className="mt-2 flex gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-[#222] hover:bg-[#2a2a2a] text-gray-300 border border-white/5"
-                            onClick={() => setReportToDownload(null)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1 h-8 text-[11px] bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                            onClick={executeDownload}
-                        >
-                            Download
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Download Dialog */}
+            <ConfirmDialog
+                config={downloadConfig}
+                onClose={hideDownload}
+                onConfirm={handleDownloadConfirm}
+            />
         </div>
     );
 }
