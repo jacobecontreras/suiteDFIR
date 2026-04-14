@@ -4,3 +4,7 @@ export { useAutoScroll } from './useAutoScroll';
 export { useConfirmDialog } from './useConfirmDialog';
 export { useCasePersistedState } from './useCasePersistedState';
 export { useHistoricalLogs } from './useHistoricalLogs';
+export { useEventSourceStream } from './useEventSourceStream';
+export { useProcessingState } from './useProcessingState';
+export { useLeappProcessing } from './useLeappProcessing';
+export { useBackupProcessing } from './useBackupProcessing';
