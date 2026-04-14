@@ -1,4 +1,5 @@
 import { Module, Profile } from '../types/leapp';
+import { Device, Backup } from '../types/backup';
 import { API } from '@/lib/api';
 
 async function handleApiResponse<T>(response: Response): Promise<T> {
@@ -122,32 +123,28 @@ export function createLeappApi(tool: string) {
             },
         },
         backup: {
-            getDevices: async () => {
+            getDevices: async (): Promise<Device[]> => {
                 const response = await fetch(API.path('/backups/devices'));
-                if (!response.ok) throw new Error('Failed to fetch devices');
-                return response.json();
+                return handleApiResponse<Device[]>(response);
             },
-            startBackup: async (udid: string, name: string, caseId?: number, password?: string) => {
+            startBackup: async (udid: string, name: string, caseId?: number, password?: string): Promise<{ backup_id: number }> => {
                 const response = await fetch(API.path('/backups'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ udid, name, case_id: caseId, password }),
                 });
-                if (!response.ok) throw new Error('Failed to start backup');
-                return response.json();
+                return handleApiResponse<{ backup_id: number }>(response);
             },
-            getBackups: async (caseId?: number) => {
+            getBackups: async (caseId?: number): Promise<Backup[]> => {
                 const url = caseId ? API.path(`/backups?case_id=${caseId}`) : API.path('/backups');
                 const response = await fetch(url);
-                if (!response.ok) throw new Error('Failed to fetch backups');
-                return response.json();
+                return handleApiResponse<Backup[]>(response);
             },
-            deleteBackup: async (id: number) => {
+            deleteBackup: async (id: number): Promise<{ message: string }> => {
                 const response = await fetch(API.path(`/backups/${id}`), {
                     method: 'DELETE',
                 });
-                if (!response.ok) throw new Error('Failed to delete backup');
-                return response.json();
+                return handleApiResponse<{ message: string }>(response);
             },
         },
     };

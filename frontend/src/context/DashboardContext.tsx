@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext } from 'react'
+import { createContext, useContext, ReactNode } from 'react'
 
 interface DashboardContextType {
     activeTab: 'tasks' | 'notes';
@@ -43,7 +43,7 @@ const INITIAL_STATE: StoredState = {
     noteDescription: ''
 };
 
-export function DashboardProvider({ children }: { children: React.ReactNode }) {
+export function DashboardProvider({ children }: { children: ReactNode }) {
     const [state, setState, isStateLoaded] = useCasePersistedState<StoredState>(
         STORAGE_KEY_PREFIX,
         INITIAL_STATE

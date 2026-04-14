@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, Dispatch, SetStateAction, ReactNode } from 'react'
 import type { Case } from '@/types/case'
 import { API } from '@/lib/api'
 
@@ -6,14 +6,14 @@ interface CaseContextType {
     selectedCaseId: string | null
     setSelectedCaseId: (id: string | null) => void
     cases: Case[]
-    setCases: React.Dispatch<React.SetStateAction<Case[]>>
+    setCases: Dispatch<SetStateAction<Case[]>>
 }
 
 const CaseContext = createContext<CaseContextType | undefined>(undefined)
 
 import { usePersistedState } from '@/hooks/usePersistedState';
 
-export function CaseProvider({ children }: { children: React.ReactNode }) {
+export function CaseProvider({ children }: { children: ReactNode }) {
     const [selectedCaseId, setSelectedCaseId] = usePersistedState<string | null>(
         'selectedCaseId',
         null,

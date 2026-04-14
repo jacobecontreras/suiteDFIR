@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { GeoJsonObject } from 'geojson'
 
 type TileSource = 'osm' | 'google';
@@ -62,7 +62,7 @@ const INITIAL_STATE: StoredState = {
     searchPin: null
 };
 
-export function SpatialProvider({ children }: { children: React.ReactNode }) {
+export function SpatialProvider({ children }: { children: ReactNode }) {
     const [state, setState, isStateLoaded] = useCasePersistedState<StoredState>(
         STORAGE_KEY_PREFIX,
         INITIAL_STATE

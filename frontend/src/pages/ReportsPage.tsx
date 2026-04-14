@@ -12,7 +12,7 @@ import { API } from '@/lib/api';
 import { Report } from '@/types/report';
 import ReportsLibrary from '@/components/reports/ReportsLibrary';
 
-export default function Reports() {
+export default function ReportsPage() {
     return (
         <Suspense fallback={<LoadingPage />}>
             <ReportsContent />

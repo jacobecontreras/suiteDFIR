@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Database } from 'lucide-react'
 import { useCase } from "@/context/CaseContext"
 import { API } from "@/lib/api"
+import { formatBytes } from "@/lib/spatialLimits"
 
 interface StorageData {
     total: number
@@ -43,15 +44,6 @@ export default function StorageWidget({ className }: StorageWidgetProps) {
 
         fetchData()
     }, [selectedCaseId])
-
-    const formatBytes = (bytes: number) => {
-        if (!Number.isFinite(bytes) || bytes < 0) return '0 B'
-        if (bytes === 0) return '0 B'
-        const k = 1024
-        const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-        const i = Math.floor(Math.log(bytes) / Math.log(k))
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-    }
 
     if (!selectedCaseId) {
         return (

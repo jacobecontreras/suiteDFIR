@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
 import { useCase } from './CaseContext';
 import { createLeappApi } from '@/lib/leappApi'
 import { API } from '@/lib/api'
@@ -85,7 +85,7 @@ export function BackupProvider({ type, children }: BackupProviderProps) {
     const { selectedCaseId } = useCase();
 
     // Bug fix: use `type` instead of hardcoded 'ios'
-    const api = React.useMemo(() => createLeappApi(type), [type]);
+    const api = useMemo(() => createLeappApi(type), [type]);
 
     const updateConfig = setConfig;
 

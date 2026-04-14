@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, Dispatch, SetStateAction } from 'react'
+import { createContext, useContext, useState, useCallback, Dispatch, SetStateAction, ReactNode } from 'react'
 
 // Types for database viewer state
 export type TabType = 'structure' | 'browse' | 'execute'
@@ -120,7 +120,7 @@ interface DBViewerContextType {
 
 const DBViewerContext = createContext<DBViewerContextType | undefined>(undefined)
 
-export function DBViewerProvider({ children }: { children: React.ReactNode }) {
+export function DBViewerProvider({ children }: { children: ReactNode }) {
     const [activeTab, setActiveTab] = useState<TabType>('structure')
     const [selectedDatabase, setSelectedDatabase] = useState<DatabaseInfo | null>(null)
     const [availableDatabases, setAvailableDatabases] = useState<DatabaseInfo[]>([])

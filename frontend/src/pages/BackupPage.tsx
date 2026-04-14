@@ -11,12 +11,12 @@ import { useBackup } from "@/context/BackupContext"
 import { API } from "@/lib/api"
 import { getUniqueName } from "@/lib/naming"
 
-interface ExtractionPageProps {
+interface BackupPageProps {
     type: 'ios' | 'android';
     actionSlot?: ReactNode;
 }
 
-export default function ExtractionPage({ type, actionSlot }: ExtractionPageProps) {
+export default function BackupPage({ type, actionSlot }: BackupPageProps) {
     const {
         config,
         devices,

@@ -1,4 +1,4 @@
-import * as React from "react"
+import { forwardRef } from "react"
 import { cn } from "@/lib/utils"
 import { Check, Minus } from "lucide-react"
 
@@ -10,7 +10,7 @@ export interface CheckboxProps {
   "aria-label"?: string
 }
 
-const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
+const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
   ({ className, checked, onCheckedChange, disabled, ...props }, ref) => {
     const isChecked = checked === true
     const isIndeterminate = checked === "indeterminate"

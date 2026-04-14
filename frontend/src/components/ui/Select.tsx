@@ -1,4 +1,4 @@
-import * as React from "react"
+import { createContext, useState, useCallback, useRef, useEffect, useContext, forwardRef, type ReactNode, type ButtonHTMLAttributes, type HTMLAttributes } from "react"
 import { cn } from "../../lib/utils"
 import { ChevronDown, Search, X } from "lucide-react"
 
@@ -13,7 +13,7 @@ interface SelectContextType {
     setSearchQuery: (query: string) => void
 }
 
-const SelectContext = React.createContext<SelectContextType | undefined>(undefined)
+const SelectContext = createContext<SelectContextType | undefined>(undefined)
 
 const Select = ({
     children,
@@ -22,18 +22,18 @@ const Select = ({
     open: controlledOpen,
     onOpenChange,
 }: {
-    children: React.ReactNode,
+    children: ReactNode,
     value: string,
     onValueChange: (value: string) => void,
     open?: boolean,
     onOpenChange?: (open: boolean) => void,
 }) => {
-    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
-    const [searchQuery, setSearchQuery] = React.useState("")
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : uncontrolledOpen
 
-    const setOpen = React.useCallback((val: boolean) => {
+    const setOpen = useCallback((val: boolean) => {
         if (isControlled) {
             onOpenChange?.(val)
         } else {
@@ -45,9 +45,9 @@ const Select = ({
         }
     }, [isControlled, onOpenChange])
 
-    const containerRef = React.useRef<HTMLDivElement>(null)
+    const containerRef = useRef<HTMLDivElement>(null)
 
-    React.useEffect(() => {
+    useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
                 setOpen(false)
@@ -66,11 +66,11 @@ const Select = ({
     )
 }
 
-const SelectTrigger = React.forwardRef<
+const SelectTrigger = forwardRef<
     HTMLButtonElement,
-    React.ButtonHTMLAttributes<HTMLButtonElement>
+    ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, children, ...props }, ref) => {
-    const context = React.useContext(SelectContext)
+    const context = useContext(SelectContext)
     if (!context) throw new Error("SelectTrigger must be used within Select")
 
     return (
@@ -91,11 +91,11 @@ const SelectTrigger = React.forwardRef<
 })
 SelectTrigger.displayName = "SelectTrigger"
 
-const SelectValue = React.forwardRef<
+const SelectValue = forwardRef<
     HTMLSpanElement,
-    React.HTMLAttributes<HTMLSpanElement> & { placeholder?: string }
+    HTMLAttributes<HTMLSpanElement> & { placeholder?: string }
 >(({ className, placeholder, children, ...props }, ref) => {
-    const context = React.useContext(SelectContext)
+    const context = useContext(SelectContext)
     if (!context) throw new Error("SelectValue must be used within Select")
 
     // We need to find the selected item's label. This is tricky without the children being rendered.
@@ -114,9 +114,9 @@ const SelectValue = React.forwardRef<
 })
 SelectValue.displayName = "SelectValue"
 
-const SelectContent = React.forwardRef<
+const SelectContent = forwardRef<
     HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement> & {
+    HTMLAttributes<HTMLDivElement> & {
         position?: "popper" | "item-aligned",
         side?: "top" | "bottom",
         align?: "start" | "end",
@@ -125,7 +125,7 @@ const SelectContent = React.forwardRef<
         itemCount?: number
     }
 >(({ className, children, position = "popper", side = "bottom", align = "start", maxHeight = "300px", searchable = false, itemCount = 0, ...props }, ref) => {
-    const context = React.useContext(SelectContext)
+    const context = useContext(SelectContext)
     if (!context) throw new Error("SelectContent must be used within Select")
 
     if (!context.open) return null
@@ -180,11 +180,11 @@ const SelectContent = React.forwardRef<
 })
 SelectContent.displayName = "SelectContent"
 
-const SelectItem = React.forwardRef<
+const SelectItem = forwardRef<
     HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement> & { value: string; disabled?: boolean; hideIndicator?: boolean; filterText?: string }
+    HTMLAttributes<HTMLDivElement> & { value: string; disabled?: boolean; hideIndicator?: boolean; filterText?: string }
 >(({ className, children, value, disabled, hideIndicator, filterText, ...props }, ref) => {
-    const context = React.useContext(SelectContext)
+    const context = useContext(SelectContext)
     if (!context) throw new Error("SelectItem must be used within Select")
 
     // Filter items based on search query

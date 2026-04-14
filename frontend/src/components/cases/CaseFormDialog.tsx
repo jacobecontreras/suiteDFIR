@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/Select"
 
 import type { Case, CaseStatus, CasePriority } from '@/types/case'
-export type { Case, CaseStatus, CasePriority }
 
 interface CaseFormDialogProps {
     open: boolean

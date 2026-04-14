@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useCallback, useRef } from 'react'
+import { createContext, useContext, useEffect, useCallback, useRef, ReactNode } from 'react'
 
 interface ReportViewState {
     scrollPosition: number;
@@ -73,7 +73,7 @@ const INITIAL_STATE: StoredState = {
     iframeStates: {}
 };
 
-export function ReportsProvider({ children }: { children: React.ReactNode }) {
+export function ReportsProvider({ children }: { children: ReactNode }) {
     const [state, setState, isStateLoaded] = useCasePersistedState<StoredState>(
         STORAGE_KEY_PREFIX,
         INITIAL_STATE
