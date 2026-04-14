@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, ReactNode } from 'react';
-import { Button, Input, Dropdown, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui';
-import { useProfiles, useDropdown } from '../../hooks';
+import { Button, Input, Dropdown, ConfirmDialog } from '@/components/ui';
+import { useProfiles, useDropdown, useConfirmDialog } from '../../hooks';
 import { Module } from '../../types/leapp';
 import { useLeapp } from '@/context/LeappContext';
 import { Trash2 } from 'lucide-react';
@@ -41,7 +41,7 @@ interface ModuleSelectorProps {
 export default function ModuleSelector({ tool, isProcessing, headerSlot }: ModuleSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [profileNameInput, setProfileNameInput] = useState('');
-  const [confirmDeleteProfileId, setConfirmDeleteProfileId] = useState<number | null>(null);
+  const confirmDialog = useConfirmDialog();
 
   const {
     isOpen: isLoadProfileOpen,
@@ -134,18 +134,20 @@ export default function ModuleSelector({ tool, isProcessing, headerSlot }: Modul
     }
   };
 
-  const handleDeleteProfile = async (profileId: number) => {
-    setConfirmDeleteProfileId(profileId);
-  };
-
-  const confirmDelete = async () => {
-    if (confirmDeleteProfileId === null) return;
-    try {
-      await deleteProfile(confirmDeleteProfileId);
-      setConfirmDeleteProfileId(null);
-    } catch (error) {
-      console.error('Failed to delete profile:', error);
-    }
+  const handleDeleteProfile = (profileId: number) => {
+    confirmDialog.show({
+      title: 'Delete Profile',
+      message: 'Are you sure you want to delete this profile? This cannot be undone.',
+      variant: 'destructive',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        try {
+          await deleteProfile(profileId);
+        } catch (error) {
+          console.error('Failed to delete profile:', error);
+        }
+      }
+    });
   };
 
   const filteredModules = modules.filter(module =>
@@ -370,36 +372,7 @@ export default function ModuleSelector({ tool, isProcessing, headerSlot }: Modul
         </div>
       </div>
 
-      <Dialog open={confirmDeleteProfileId !== null} onOpenChange={(open: boolean) => !open && setConfirmDeleteProfileId(null)}>
-        <DialogContent className="max-w-[340px] p-5 bg-[#1A1A1A] border-[#333333]">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-white tracking-wide uppercase">Delete Profile</DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            <p className="text-[11px] text-gray-400 leading-relaxed">
-              Are you sure you want to delete this profile? This cannot be undone.
-            </p>
-          </div>
-          <DialogFooter className="mt-2 flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="flex-1 h-8 text-[11px]"
-              onClick={() => setConfirmDeleteProfileId(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="flex-1 h-8 text-[11px] bg-red-900/20 hover:bg-red-900/40 text-white border border-red-900/30"
-              onClick={confirmDelete}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog config={confirmDialog.config} onClose={confirmDialog.hide} onConfirm={confirmDialog.handleConfirm} />
     </div>
   );
 }

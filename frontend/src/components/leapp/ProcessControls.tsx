@@ -3,7 +3,7 @@ import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 import { useLeapp } from '../../context/LeappContext';
 import { Lock } from 'lucide-react';
 import { createLeappApi } from '../../services/leappApi';
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '../../hooks/useToast';
 import { getUniqueName } from '@/lib/naming';
 
 interface ProcessControlsProps {

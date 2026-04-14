@@ -21,7 +21,7 @@ import {
     SidebarMenuItem,
     SidebarSeparator,
     useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/Sidebar"
 
 import { useState, useEffect } from "react"
 import { useLocation, useNavigate, Link } from "react-router-dom"

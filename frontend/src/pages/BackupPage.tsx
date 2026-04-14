@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useCallback, ReactNode } from 'react'
 import { createLeappApi } from '@/services/leappApi'
 import { Card, CardContent } from "@/components/ui/Card"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip"
 import { useConfirmDialog, useHistoricalLogs } from "@/hooks"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { DeviceVisualization, BackupControls, BackupLogPanel, BackupLibraryPanel } from "@/components/backup"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/useToast"
 import { useCase } from "@/context/CaseContext"
 import { useBackup } from "@/context/BackupContext"
 import { API } from "@/lib/api"

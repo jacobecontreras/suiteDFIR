@@ -1,6 +1,6 @@
 import { Suspense, lazy, useState, useCallback } from 'react'
 import { LoadingPage } from '@/components/ui/LoadingPage'
-import { GoogleMapsInfoModal } from '@/components/modals/GoogleMapsInfoModal'
+import { GoogleMapsInfoModal } from '@/components/spatial/GoogleMapsInfoModal'
 import { usePersistedState } from '@/hooks/usePersistedState'
 
 const SpatialMap = lazy(() => import('@/components/spatial/SpatialMap'))

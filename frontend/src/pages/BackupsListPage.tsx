@@ -6,7 +6,7 @@ import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { useCase } from '@/context/CaseContext';
 import { API } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 
 interface Backup {
     id: number;

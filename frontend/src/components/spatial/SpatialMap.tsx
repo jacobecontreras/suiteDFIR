@@ -10,7 +10,7 @@ import { parseKmlText } from "@/lib/kmlUtils"
 import { onEachFeature } from "@/lib/mapUtils"
 import { useCase } from "@/context/CaseContext"
 import { useSpatial } from "@/context/SpatialContext"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/useToast"
 import { useGoogleApiKey } from "@/hooks/useGoogleApiKey"
 import { MAX_SPATIAL_FEATURES } from "@/lib/spatialLimits"
 

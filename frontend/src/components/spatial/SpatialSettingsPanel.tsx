@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select"
 import { API } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/useToast"
 import { useClickOutside } from "@/hooks/useClickOutside"
 import { useSpatial } from "@/context/SpatialContext"
 

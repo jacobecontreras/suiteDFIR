@@ -19,7 +19,7 @@ import type {
 import { useCase } from '@/context/CaseContext';
 import { useReports } from '@/context/ReportsContext';
 import { API } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { useCaseExport } from '@/hooks/useCaseExport';
 

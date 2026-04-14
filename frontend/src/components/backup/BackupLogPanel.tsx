@@ -1,7 +1,7 @@
 import { FileText } from 'lucide-react'
 import { Button } from "@/components/ui/Button"
-import LogViewer from "@/components/ileapp/LogViewer"
-import { generateProgressBar } from "@/utils/progress"
+import LogViewer from "@/components/leapp/LogViewer"
+import { generateProgressBar } from "@/lib/progress"
 
 interface BackupLogPanelProps {
     logs: string[]

@@ -1,7 +1,7 @@
 import { useState, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { useSpatial } from "@/context/SpatialContext"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/useToast"
 import { useClickOutside } from "@/hooks/useClickOutside"
 
 interface LayerOption {

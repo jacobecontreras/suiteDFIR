@@ -1,9 +1,9 @@
 
 import { useState, useEffect, useCallback, ReactNode } from 'react';
-import LogViewer from '../../components/ileapp/LogViewer';
-import FileSelector from '../../components/ileapp/FileSelector';
-import ModuleSelector from '../../components/ileapp/ModuleSelector';
-import ProcessControls from '../../components/ileapp/ProcessControls';
+import LogViewer from './LogViewer';
+import FileSelector from './FileSelector';
+import ModuleSelector from './ModuleSelector';
+import ProcessControls from './ProcessControls';
 import { useLeapp } from '@/context/LeappContext';
 
 import { Button, Input, ConfirmDialog, LibraryCard, ItemLibrary } from '@/components/ui';
@@ -12,7 +12,7 @@ import { FolderOpen, Calendar, Trash2, Download, FileText } from 'lucide-react';
 import { useConfirmDialog, useHistoricalLogs } from '@/hooks';
 
 import { API } from '@/lib/api';
-import { generateProgressBar } from '@/utils/progress';
+import { generateProgressBar } from '@/lib/progress';
 
 interface LeappPageProps {
     tool: 'ileapp' | 'aleapp';

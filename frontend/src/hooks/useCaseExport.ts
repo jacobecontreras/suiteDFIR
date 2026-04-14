@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { API } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import type { ExportStatus } from '@/components/library';
 
 export function useCaseExport(selectedCaseId: string | null) {

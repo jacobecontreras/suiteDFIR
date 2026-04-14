@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Plus, Trash2, CheckSquare, Check } from 'lucide-react'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/Select"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/useToast"
 import { useCase } from "@/context/CaseContext"
 import { useDashboard } from "@/context/DashboardContext"
 import { API } from "@/lib/api"
