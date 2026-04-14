@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Dropdown from '../ui/Dropdown';
 import { Input, Button } from '../ui';
 import { useDropdown } from '../../hooks/useDropdown';
-import { createLeappApi } from '../../services/leappApi';
+import { createLeappApi } from '@/lib/leappApi';
 import { Smartphone, HardDrive, Folder } from 'lucide-react';
 import { API } from '@/lib/api';
 

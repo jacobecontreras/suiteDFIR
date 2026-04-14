@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input } from '@/components/ui';
 import { useLeapp } from '../../context/LeappContext';
 import { Lock } from 'lucide-react';
-import { createLeappApi } from '../../services/leappApi';
+import { createLeappApi } from '@/lib/leappApi';
 import { useToast } from '../../hooks/useToast';
 import { getUniqueName } from '@/lib/naming';
 

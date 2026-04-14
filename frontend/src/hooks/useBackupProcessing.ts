@@ -145,7 +145,7 @@ export function useBackupProcessing({
     }, [backups, hasFetchedBackups, type, stream, connectToLogStream, setProcessing, processing.isRunning, processing.activeBackupId]);
 
     const startBackup = useCallback(async (
-        api: ReturnType<typeof import('../services/leappApi').createLeappApi>,
+        api: ReturnType<typeof import('@/lib/leappApi').createLeappApi>,
         udid: string,
         name: string,
         config: { isEncrypted: boolean; backupPassword: string },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createLeappApi } from '../services/leappApi';
+import { createLeappApi } from '@/lib/leappApi';
 import { Profile } from '@/types/leapp';
 
 export function useProfiles(tool: string) {

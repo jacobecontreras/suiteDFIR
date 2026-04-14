@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { useCase } from './CaseContext';
-import { createLeappApi } from '../services/leappApi'
+import { createLeappApi } from '@/lib/leappApi'
 import { API } from '@/lib/api'
 import { Device, Backup } from '../types/backup'
 import { useCasePersistedState } from '@/hooks/useCasePersistedState';

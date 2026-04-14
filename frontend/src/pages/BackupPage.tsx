@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback, ReactNode } from 'react'
-import { createLeappApi } from '@/services/leappApi'
+import { createLeappApi } from '@/lib/leappApi'
 import { Card, CardContent } from "@/components/ui/Card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip"
 import { useConfirmDialog, useHistoricalLogs } from "@/hooks"

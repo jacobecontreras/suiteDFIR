@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useEventSourceStream } from './useEventSourceStream';
 import { useProcessingState } from './useProcessingState';
-import { createLeappApi } from '../services/leappApi';
+import { createLeappApi } from '@/lib/leappApi';
 import { useCase } from '../context/CaseContext';
 
 const MAX_LOGS = 2000;

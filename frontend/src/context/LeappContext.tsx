@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode, useMemo } from 'react'
 import { useCase } from './CaseContext';
-import { createLeappApi } from '../services/leappApi'
+import { createLeappApi } from '@/lib/leappApi'
 import { Module } from '@/types/leapp';
 import { useCasePersistedState } from '@/hooks/useCasePersistedState';
 import { useLeappProcessing, LeappProcessingState, INITIAL_LEAPP_PROCESSING } from '@/hooks/useLeappProcessing';
