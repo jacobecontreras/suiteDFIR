@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import {
     ChevronDown,
     ChevronRight,
@@ -16,6 +16,7 @@ import { API } from '@/lib/api'
 import { useCase } from '@/context/CaseContext'
 import { cn } from '@/lib/utils'
 import { DataTable } from '@/components/ui/DataTable'
+import { useDbExport } from '@/hooks/useDbExport'
 import { Button } from '@/components/ui/Button'
 
 type GroupKey = 'tables' | 'indexes' | 'views' | 'triggers'
@@ -100,21 +101,10 @@ export function StructurePanel() {
         setExpandedTables((prev) => ({ ...prev, [tableName]: !prev[tableName] }))
     }
 
-    const handleExport = async (format: 'csv' | 'json') => {
-        if (!selectedCaseId || !selectedDatabase) return
+    const onExportError = useCallback((msg: string) => setError(msg), [setError])
+    const exportData = useDbExport(selectedCaseId, selectedDatabase?.relativePath, onExportError)
 
-        try {
-            const params = new URLSearchParams({
-                db_path: selectedDatabase.relativePath,
-                format,
-            })
-
-            // Export the schema as a query result
-            const response = await fetch(API.path(`/db_viewer/cases/${selectedCaseId}/databases/export?${params}`), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sql: `SELECT name, type, sql FROM sqlite_master UNION ALL
+    const SCHEMA_EXPORT_SQL = `SELECT name, type, sql FROM sqlite_master UNION ALL
                            SELECT 'Tables', COUNT(*), '' FROM sqlite_master WHERE type = 'table'
                            UNION ALL
                            SELECT 'Indexes', COUNT(*), '' FROM sqlite_master WHERE type = 'index'
@@ -122,24 +112,10 @@ export function StructurePanel() {
                            SELECT 'Views', COUNT(*), '' FROM sqlite_master WHERE type = 'view'
                            UNION ALL
                            SELECT 'Triggers', COUNT(*), '' FROM sqlite_master WHERE type = 'trigger'`
-                }),
-            })
 
-            if (!response.ok) {
-                throw new Error(`Export failed: ${response.status}`)
-            }
-
-            const data = await response.json()
-            const blob = new Blob([data.data], { type: format === 'csv' ? 'text/csv' : 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${selectedDatabase.name}_schema_export.${format}`
-            a.click()
-            URL.revokeObjectURL(url)
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Export failed')
-        }
+    const handleExport = (format: 'csv' | 'json') => {
+        if (!selectedDatabase) return
+        exportData(format, SCHEMA_EXPORT_SQL, `${selectedDatabase.name}_schema_export`)
     }
 
     // Filter schema based on search

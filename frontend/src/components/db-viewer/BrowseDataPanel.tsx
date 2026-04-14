@@ -1,4 +1,4 @@
-import { useEffect, useState, useDeferredValue, useRef } from 'react'
+import { useEffect, useState, useDeferredValue, useRef, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Database, Filter, Download } from 'lucide-react'
 import { useDBViewer } from '@/context/DBViewerContext'
 import { API } from '@/lib/api'
@@ -6,6 +6,7 @@ import { useCase } from '@/context/CaseContext'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { DataTable } from '@/components/ui/DataTable'
+import { useDbExport } from '@/hooks/useDbExport'
 import type { SortDirection } from '@/components/ui/DataTable'
 
 const PAGE_SIZE = 50
@@ -162,36 +163,12 @@ export function BrowseDataPanel() {
         setGoToPageValue(String(nextPage))
     }
 
-    const handleExport = async (format: 'csv' | 'json') => {
-        if (!selectedCaseId || !selectedDatabase || !selectedTable) return
+    const onExportError = useCallback((msg: string) => setError(msg), [setError])
+    const exportData = useDbExport(selectedCaseId, selectedDatabase?.relativePath, onExportError)
 
-        try {
-            const params = new URLSearchParams({
-                db_path: selectedDatabase.relativePath,
-                format,
-            })
-
-            const response = await fetch(API.path(`/db_viewer/cases/${selectedCaseId}/databases/export?${params}`), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sql: `SELECT * FROM "${selectedTable}"` }),
-            })
-
-            if (!response.ok) {
-                throw new Error(`Export failed: ${response.status}`)
-            }
-
-            const data = await response.json()
-            const blob = new Blob([data.data], { type: format === 'csv' ? 'text/csv' : 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${selectedTable}_export.${format}`
-            a.click()
-            URL.revokeObjectURL(url)
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Export failed')
-        }
+    const handleExport = (format: 'csv' | 'json') => {
+        if (!selectedTable) return
+        exportData(format, `SELECT * FROM "${selectedTable}"`, `${selectedTable}_export`)
     }
 
     if (!selectedDatabase) {

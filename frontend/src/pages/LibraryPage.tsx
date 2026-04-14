@@ -11,7 +11,6 @@ import {
 import type {
     Report,
     Backup,
-    ExportStatus,
     LibraryCardHandlers,
     BackupFilter,
     SortOption,
@@ -22,6 +21,7 @@ import { useReports } from '@/context/ReportsContext';
 import { API } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useDragScroll } from '@/hooks/useDragScroll';
+import { useCaseExport } from '@/hooks/useCaseExport';
 
 type ViewModeValue = 'reports' | 'backups';
 
@@ -54,16 +54,21 @@ export default function LibraryPage() {
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const [backupToDelete, setBackupToDelete] = useState<Backup | null>(null);
 
-    // Export state
-    const [exportStatus, setExportStatus] = useState<ExportStatus>({ status: 'idle' });
-    const [showExportDialog, setShowExportDialog] = useState(false);
+    // Export hook
+    const {
+        exportStatus,
+        showExportDialog,
+        setShowExportDialog,
+        handleExportClick,
+        startExport,
+        downloadExport,
+        resetExport,
+    } = useCaseExport(selectedCaseId);
 
     // Fullscreen state for reports
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Refs
-    const eventSourceRef = useRef<EventSource | null>(null);
-    const exportCompletedRef = useRef(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const carouselContainerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState(1200);
@@ -86,7 +91,7 @@ export default function LibraryPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [reportsRes] = await Promise.all([
+                const [reportsRes, backupsRes] = await Promise.all([
                     fetch(selectedCaseId ? API.path(`/reports?case_id=${selectedCaseId}`) : API.path('/reports')),
                     fetch(selectedCaseId ? API.path(`/backups?case_id=${selectedCaseId}`) : API.path('/backups'))
                 ]);
@@ -96,18 +101,10 @@ export default function LibraryPage() {
                     setReports(data);
                 }
 
-                // FAKE BACKUPS FOR TESTING - TODO: Remove this block
-                const fakeBackups: Backup[] = Array.from({ length: 20 }, (_, i) => ({
-                    id: 1000 + i,
-                    name: `Test Backup ${i + 1}`,
-                    device_name: i % 2 === 0 ? 'iPhone 15 Pro' : 'Samsung Galaxy S24',
-                    path: `/fake/path/backup_${i + 1}`,
-                    created_at: new Date(Date.now() - i * 86400000).toISOString(),
-                    size: `${(Math.random() * 100 + 10).toFixed(1)} GB`,
-                    type: i % 2 === 0 ? 'ios' : 'android',
-                    status: 'completed'
-                }));
-                setBackups(fakeBackups);
+                if (backupsRes.ok) {
+                    const data = await backupsRes.json();
+                    setBackups(data);
+                }
             } catch (error) {
                 console.error('Failed to fetch library data:', error);
             } finally {
@@ -394,134 +391,12 @@ export default function LibraryPage() {
         }
     };
 
-    // Export handlers
-    const handleExportClick = () => {
-        if (!selectedCaseId) {
-            toast({
-                title: "No Case Selected",
-                description: "Please select a case first.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        if (reportsCount === 0 && backupsCount === 0) {
-            toast({
-                title: "Nothing to Export",
-                description: "This case has no reports or completed backups.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        setShowExportDialog(true);
-    };
-
-    const startExport = async () => {
-        if (!selectedCaseId) return;
-
-        exportCompletedRef.current = false;
-        setExportStatus({ status: 'creating', message: 'Creating export job...' });
-        setShowExportDialog(false);
-
-        try {
-            const response = await fetch(API.path(`/cases/${selectedCaseId}/export`), {
-                method: 'POST'
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Failed to create export');
-            }
-
-            const data = await response.json();
-            const jobId = data.job_id;
-
-            setExportStatus({ status: 'processing', jobId, message: 'Preparing export...' });
-
-            const eventSource = new EventSource(API.path(`/cases/${selectedCaseId}/export/${jobId}/stream`));
-            eventSourceRef.current = eventSource;
-
-            eventSource.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-
-                    if (data.type === 'status_update') {
-                        if (data.status === 'processing') {
-                            setExportStatus({
-                                status: 'processing',
-                                jobId,
-                                progress: data.progress || 0,
-                                message: `Processing... ${data.progress || 0}%`
-                            });
-                        } else if (data.status === 'completed') {
-                            exportCompletedRef.current = true;
-                            setExportStatus({
-                                status: 'completed',
-                                jobId,
-                                downloadUrl: API.path(`/cases/${selectedCaseId}/export/${jobId}/download`),
-                                message: 'Export ready!'
-                            });
-                            eventSource.close();
-                        } else if (data.status === 'failed') {
-                            setExportStatus({
-                                status: 'error',
-                                message: 'Export failed. Please try again.'
-                            });
-                            eventSource.close();
-                        }
-                    }
-                } catch (e) {
-                    console.error('Failed to parse SSE message:', e);
-                }
-            };
-
-            eventSource.onerror = () => {
-                eventSource.close();
-                if (!exportCompletedRef.current) {
-                    setExportStatus({
-                        status: 'error',
-                        message: 'Connection lost. Please check if export completed.'
-                    });
-                }
-            };
-
-        } catch (error) {
-            console.error('Export error:', error);
-            setExportStatus({
-                status: 'error',
-                message: error instanceof Error ? error.message : 'Failed to start export'
-            });
-            toast({
-                title: "Export Failed",
-                description: exportStatus.message,
-                variant: "destructive"
-            });
-        }
-    };
-
-    const downloadExport = () => {
-        if (exportStatus.downloadUrl) {
-            window.location.href = exportStatus.downloadUrl;
-            setExportStatus({ status: 'idle' });
-        }
-    };
-
-    const resetExport = () => {
-        exportCompletedRef.current = false;
-        setExportStatus({ status: 'idle' });
-        if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
-        }
-    };
-
     return (
         <div className={`h-screen w-full flex flex-col gap-4 bg-[#151515] text-white overflow-hidden ${isFullscreen ? 'py-0 px-0' : 'py-[3vh] px-[9vh]'}`}>
             {/* Header Bar */}
             <LibraryHeader
                 exportStatus={exportStatus}
-                onExportClick={handleExportClick}
+                onExportClick={() => handleExportClick(reportsCount, backupsCount)}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
             />

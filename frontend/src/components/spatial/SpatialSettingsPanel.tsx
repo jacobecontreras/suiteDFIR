@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Check, Eye, EyeOff, Loader2, Settings, X } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select"
 import { API } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { useClickOutside } from "@/hooks/useClickOutside"
 import { useSpatial } from "@/context/SpatialContext"
 
 const DEFAULT_NOMINATIM_URL = "https://nominatim.openstreetmap.org"
@@ -30,45 +31,19 @@ export default function SpatialSettingsPanel() {
     const hasGoogleKeyConfigured = apiKey.trim().length > 0
     const effectiveProvider = tileSource === "google" ? geocoderProvider : "nominatim"
 
-    useEffect(() => {
-        if (!isOpen) return
+    const suppressClickWhen = useCallback(() => showClearConfirm, [showClearConfirm])
 
-        const handleClickOutside = (event: MouseEvent) => {
-            // Don't close panel if the confirmation dialog is open
-            if (showClearConfirm) return
-
-            const target = event.target as Node
-            if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) {
-                return
-            }
-            setIsOpen(false)
+    useClickOutside(
+        [panelRef, triggerRef],
+        () => { setIsOpen(false); setShowClearConfirm(false) },
+        {
+            enabled: isOpen,
+            onEscape: showClearConfirm
+                ? () => setShowClearConfirm(false)
+                : () => setIsOpen(false),
+            suppressClickWhen,
         }
-
-        const handleEscape = (event: KeyboardEvent) => {
-            // Close confirmation dialog on Escape, not the whole panel
-            if (showClearConfirm) {
-                setShowClearConfirm(false)
-                return
-            }
-            if (event.key === "Escape") {
-                setIsOpen(false)
-            }
-        }
-
-        document.addEventListener("mousedown", handleClickOutside)
-        document.addEventListener("keydown", handleEscape)
-
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside)
-            document.removeEventListener("keydown", handleEscape)
-        }
-    }, [isOpen, showClearConfirm])
-
-    useEffect(() => {
-        if (!isOpen) {
-            setShowClearConfirm(false)
-        }
-    }, [isOpen])
+    )
 
     useEffect(() => {
         if (!hasGoogleKeyConfigured && geocoderProvider === "google") {

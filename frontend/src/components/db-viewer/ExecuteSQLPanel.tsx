@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Play, PlusSquare, X, PencilLine, Loader2, Download } from 'lucide-react'
 import { useDBViewer, QueryResultTab } from '@/context/DBViewerContext'
 import { API } from '@/lib/api'
 import { useCase } from '@/context/CaseContext'
 import { Button } from '@/components/ui/Button'
 import { DataTable } from '@/components/ui/DataTable'
+import { useDbExport } from '@/hooks/useDbExport'
 import { cn } from '@/lib/utils'
 
 const DEFAULT_QUERY = `SELECT name
@@ -177,38 +178,12 @@ export function ExecuteSQLPanel() {
         setEditingTabId(null)
     }
 
-    const handleExport = async (format: 'csv' | 'json') => {
-        if (!selectedCaseId || !selectedDatabase || !activeResult) return
+    const onExportError = useCallback((msg: string) => { setLocalError(msg); setError(msg) }, [setError])
+    const exportData = useDbExport(selectedCaseId, selectedDatabase?.relativePath, onExportError)
 
-        try {
-            const params = new URLSearchParams({
-                db_path: selectedDatabase.relativePath,
-                format,
-            })
-
-            const response = await fetch(API.path(`/db_viewer/cases/${selectedCaseId}/databases/export?${params}`), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sql: activeResult.sql }),
-            })
-
-            if (!response.ok) {
-                throw new Error(`Export failed: ${response.status}`)
-            }
-
-            const data = await response.json()
-            const blob = new Blob([data.data], { type: format === 'csv' ? 'text/csv' : 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${activeResult.name.replace(/[^a-z0-9]/gi, '_')}_export.${format}`
-            a.click()
-            URL.revokeObjectURL(url)
-        } catch (e) {
-            const errorMsg = e instanceof Error ? e.message : 'Export failed'
-            setLocalError(errorMsg)
-            setError(errorMsg)
-        }
+    const handleExport = (format: 'csv' | 'json') => {
+        if (!activeResult) return
+        exportData(format, activeResult.sql, `${activeResult.name.replace(/[^a-z0-9]/gi, '_')}_export`)
     }
 
     const activeResult = queryResults.find((r) => r.id === activeResultId)

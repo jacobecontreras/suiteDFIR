@@ -11,6 +11,7 @@ import { onEachFeature } from "@/lib/mapUtils"
 import { useCase } from "@/context/CaseContext"
 import { useSpatial } from "@/context/SpatialContext"
 import { useToast } from "@/hooks/use-toast"
+import { useGoogleApiKey } from "@/hooks/useGoogleApiKey"
 import { MAX_SPATIAL_FEATURES } from "@/lib/spatialLimits"
 
 // Fix for default marker icons in Next.js
@@ -185,7 +186,7 @@ export default function SpatialMap() {
     } = useSpatial()
 
     const [browsedKmls, setBrowsedKmls] = useState<Record<string, GeoJsonObject>>({})
-    const [hasGoogleApiKey, setHasGoogleApiKey] = useState<boolean>(false)
+    const { hasKey: hasGoogleApiKey } = useGoogleApiKey(apiKeyRefreshKey)
     const { selectedCaseId } = useCase()
     const { toast } = useToast()
 
@@ -194,28 +195,6 @@ export default function SpatialMap() {
     useEffect(() => {
         browsedKmlsRef.current = browsedKmls;
     }, [browsedKmls]);
-
-    // Check if Google API key is configured
-    useEffect(() => {
-        const checkApiKey = async () => {
-            try {
-                const res = await fetch(API.path("/settings/google_maps_api_key"))
-                if (res.ok) {
-                    const data = await res.json()
-                    setHasGoogleApiKey(data.value !== '')
-                } else if (res.status === 404) {
-                    // 404 means key is not set
-                    setHasGoogleApiKey(false)
-                } else {
-                    // Other error - assume no key
-                    setHasGoogleApiKey(false)
-                }
-            } catch {
-                setHasGoogleApiKey(false)
-            }
-        }
-        checkApiKey()
-    }, [apiKeyRefreshKey])
 
     // Callback to add KML data by URL (used by MapControls for temporary files)
     const addBrowsedKml = useCallback((url: string, data: GeoJsonObject) => {
