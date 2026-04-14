@@ -35,7 +35,7 @@ class ProcessManager:
             raise ValueError("Input path does not exist")
 
         # Create output directory
-        output_dir = os.path.join(REPORTS_DIR, f"{tool}-reports", request.case_name)
+        output_dir = os.path.join(REPORTS_DIR, f"{tool}-reports")
         os.makedirs(output_dir, exist_ok=True)
 
         # Module Selection Logic
@@ -314,12 +314,6 @@ class ProcessManager:
                 except Exception as e:
                     logger.error(f"Error removing partial report {new_report_path}: {e}")
             
-            if os.path.exists(output_dir) and not os.listdir(output_dir):
-                try:
-                    os.rmdir(output_dir)
-                    logger.debug(f"Removed empty case directory: {output_dir}")
-                except Exception as e:
-                    logger.error(f"Error removing empty case directory {output_dir}: {e}")
 
     def _determine_input_type(self, input_path: str, tool: str) -> str:
         """Determine the input type for the tool command."""

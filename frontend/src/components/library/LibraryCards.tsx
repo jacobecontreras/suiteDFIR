@@ -64,7 +64,7 @@ export function LibraryCards({
                 {/* Horizontal Scrollable Cards */}
                 <div
                     ref={scrollContainerRef}
-                    className={`flex-1 overflow-x-auto overflow-y-hidden min-h-0 [&::-webkit-scrollbar]:hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    className={`flex-1 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     onMouseDown={onStartDrag}
                     onMouseLeave={onEndDrag}
@@ -72,13 +72,13 @@ export function LibraryCards({
                     onMouseMove={onDrag}
                 >
                     {isLoading ? (
-                        <div className="h-full flex items-center justify-center text-gray-500 text-sm">Loading...</div>
+                        <div className="min-h-[60px] flex items-center justify-center text-gray-500 text-sm">Loading...</div>
                     ) : isEmpty ? (
-                        <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+                        <div className="min-h-[60px] flex items-center justify-center text-gray-500 text-sm">
                             {searchQuery || filter !== 'all' ? 'No matching results' : `No ${viewMode} found`}
                         </div>
                     ) : (
-                        <div className="flex gap-3 h-full items-center">
+                        <div className="flex gap-3 items-center">
                             {items.map((item) => {
                                 const isReport = viewMode === 'reports';
                                 const report = isReport ? (item as Report) : null;
@@ -89,7 +89,6 @@ export function LibraryCards({
                                         key={item.id}
                                         data-report-id={isReport ? report!.id : undefined}
                                         data-backup-id={!isReport ? backup!.id : undefined}
-                                        className="min-h-[48px]"
                                         title={item.name}
                                         isSelected={selectedId === item.id}
                                         onClick={() => onSelect(item)}

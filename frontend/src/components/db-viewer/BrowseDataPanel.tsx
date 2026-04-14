@@ -1,5 +1,5 @@
 import { useEffect, useState, useDeferredValue, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Database, Filter, Download } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Filter, Download } from 'lucide-react'
 import { useDBViewer } from '@/context/DBViewerContext'
 import { API } from '@/lib/api'
 import { useCase } from '@/context/CaseContext'
@@ -173,11 +173,8 @@ export function BrowseDataPanel() {
 
     if (!selectedDatabase) {
         return (
-            <div className="h-full w-full flex items-center justify-center text-[#888]">
-                <div className="text-center">
-                    <Database className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg">No database selected</p>
-                </div>
+            <div className="h-full w-full flex items-center justify-center text-gray-500">
+                <p className="text-lg">No database selected</p>
             </div>
         )
     }

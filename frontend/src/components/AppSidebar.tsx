@@ -98,18 +98,13 @@ export function AppSidebar() {
             <SidebarHeader className="pt-4 px-2 group-data-[state=collapsed]:px-0">
                 {currentCase && (
                     <div className="flex flex-col relative min-h-[50px] mb-4">
-                        <div className={`px-4 flex flex-col gap-1.5 transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100 pointer-events-auto' : 'duration-0 opacity-0 pointer-events-none'}`}>
-                            <div className="font-['Oswald'] text-xl font-bold tracking-wide text-gray-200">
-                                suiteDFIR
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-400 truncate max-w-[120px]" title={currentCase.name}>
-                                    {currentCase.name}
-                                </span>
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#1A1A1A] text-gray-400 border border-[#333333] whitespace-nowrap">
-                                    {currentCase.status}
-                                </span>
-                            </div>
+                        <div className={`px-4 flex flex-col gap-1 transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100 pointer-events-auto' : 'duration-0 opacity-0 pointer-events-none'}`}>
+                            <span className="text-sm font-medium text-gray-200 truncate" title={currentCase.name}>
+                                {currentCase.name}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#1A1A1A] text-gray-400 border border-[#333333] w-fit">
+                                {currentCase.status}
+                            </span>
                         </div>
 
                         <div className={`absolute top-0 left-0 right-0 h-[50px] flex items-center justify-center ${isBackVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>

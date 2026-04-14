@@ -22,7 +22,7 @@ export function LibraryHeader({
     onViewModeChange
 }: LibraryHeaderProps) {
     return (
-        <div className="h-[64px] flex items-center justify-between gap-6 flex-shrink-0">
+        <div className="flex items-center justify-between gap-6 flex-shrink-0">
             {/* Left: Export button */}
             <Button
                 onClick={exportStatus.status === 'idle' ? onExportClick : undefined}

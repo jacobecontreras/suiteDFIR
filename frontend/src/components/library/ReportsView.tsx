@@ -1,5 +1,5 @@
 import { useEffect, RefObject } from 'react';
-import { FileText, X, Maximize2 } from 'lucide-react';
+import { X, Maximize2 } from 'lucide-react';
 import { API } from '@/lib/api';
 import type { Report } from '@/types/report';
 
@@ -61,9 +61,7 @@ export function ReportsView({
             ) : (
                 <div className="flex-1 flex items-center justify-center text-gray-500">
                     <div className="text-center">
-                        <FileText size={48} className="mx-auto mb-3 opacity-30" />
-                        <p className="text-lg">Select a report to view</p>
-                        <p className="text-sm mt-1">Choose from the library below</p>
+                        <p className="text-lg">No reports found</p>
                     </div>
                 </div>
             )}

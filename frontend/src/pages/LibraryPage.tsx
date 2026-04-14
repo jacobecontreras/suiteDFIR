@@ -392,14 +392,16 @@ export default function LibraryPage() {
     };
 
     return (
-        <div className={`h-screen w-full flex flex-col gap-4 bg-[#151515] text-white overflow-hidden ${isFullscreen ? 'py-0 px-0' : 'py-[3vh] px-[9vh]'}`}>
+        <div className={`h-full w-full flex flex-col gap-4 bg-[#151515] text-white overflow-hidden ${isFullscreen ? 'py-0 px-0' : 'py-[3vh] px-[9vh]'}`}>
             {/* Header Bar */}
-            <LibraryHeader
-                exportStatus={exportStatus}
-                onExportClick={() => handleExportClick(reportsCount, backupsCount)}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-            />
+            {!isFullscreen && (
+                <LibraryHeader
+                    exportStatus={exportStatus}
+                    onExportClick={() => handleExportClick(reportsCount, backupsCount)}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                />
+            )}
 
             {/* Top Section - Content Viewer */}
             <div className="flex-1 min-h-0 relative flex flex-col">
@@ -433,7 +435,7 @@ export default function LibraryPage() {
 
             {/* Bottom Section - Library */}
             {!isFullscreen && (
-                <div className="flex flex-col gap-2 min-h-0 pb-2 pt-2">
+                <div className="flex flex-col gap-2 min-h-0">
                     <LibraryFilters
                         viewMode={viewMode}
                         reportFilter={reportFilter}

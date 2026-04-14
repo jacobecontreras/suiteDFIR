@@ -81,10 +81,6 @@ class ReportManager:
         if os.path.exists(path):
             try:
                 await self._delete_path(path)
-                
-                # Cleanup empty parent directories recursively
-                await self._cleanup_empty_parents(os.path.dirname(path))
-                
                 return {"message": "Report deleted successfully"}
             except Exception as e:
                 logger.error(f"Error deleting report files at {path}: {e}")
@@ -103,10 +99,6 @@ class ReportManager:
     async def _delete_path(self, path: str):
         """Asynchronously delete a file or directory."""
         await FileOperations.delete_path(path)
-
-    async def _cleanup_empty_parents(self, parent_path: str):
-        """Recursively remove empty parent directories up to REPORTS_DIR."""
-        await FileOperations.cleanup_empty_dirs_recursive({parent_path}, REPORTS_DIR)
 
     async def prepare_report_file(self, report_id: int, file_path: str) -> Dict[str, Any]:
         """

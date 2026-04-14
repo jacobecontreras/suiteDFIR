@@ -148,8 +148,12 @@ class FileOperations:
                     if rel == "." or str(rel.parent) == ".":
                         continue
 
-                    # Only delete if empty
-                    if not os.listdir(parent):
+                    # Only delete if empty (ignoring macOS metadata)
+                    contents = [f for f in os.listdir(parent) if f not in {'.DS_Store', '._.DS_Store'}]
+                    if not contents:
+                        # Remove leftover metadata files before rmdir
+                        for meta in os.listdir(parent):
+                            os.remove(parent / meta)
                         os.rmdir(parent)
                         logger.info(f"Removed empty directory: {parent}")
                 except ValueError:
@@ -203,8 +207,12 @@ class FileOperations:
                         if current_resolved == root_dir:
                             break
 
-                        # Only delete if empty
-                        if not os.listdir(current):
+                        # Only delete if empty (ignoring macOS metadata)
+                        contents = [f for f in os.listdir(current) if f not in {'.DS_Store', '._.DS_Store'}]
+                        if not contents:
+                            # Remove leftover metadata files before rmdir
+                            for meta in os.listdir(current):
+                                os.remove(current / meta)
                             removed_dir = current
                             os.rmdir(current)
                             logger.info(f"Removed empty directory: {removed_dir}")

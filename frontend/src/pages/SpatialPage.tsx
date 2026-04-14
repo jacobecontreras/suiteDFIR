@@ -6,7 +6,6 @@ import { usePersistedState } from '@/hooks/usePersistedState'
 const SpatialMap = lazy(() => import('@/components/spatial/SpatialMap'))
 
 export default function SpatialPage() {
-    const [pageContainer, setPageContainer] = useState<HTMLDivElement | null>(null)
     const [dismissed, setDismissed, isLoaded] = usePersistedState(
         'googleMapsInfoDismissed',
         false,
@@ -17,7 +16,6 @@ export default function SpatialPage() {
 
     const handleModalOpenChange = useCallback((open: boolean) => {
         if (!open) {
-            // User is closing the modal
             if (dontShowAgain) {
                 setDismissed(true)
             }
@@ -25,11 +23,10 @@ export default function SpatialPage() {
         }
     }, [dontShowAgain, setDismissed])
 
-    // Don't render modal until localStorage is loaded to prevent flash
     const shouldShowModal = isLoaded && !dismissed && !dismissedThisSession
 
     return (
-        <div ref={setPageContainer} className="h-full w-full relative overflow-hidden">
+        <div className="h-full w-full relative overflow-hidden">
             <Suspense fallback={<LoadingPage className="absolute inset-0 min-h-0 h-full z-10" />}>
                 <SpatialMap />
             </Suspense>
@@ -38,7 +35,6 @@ export default function SpatialPage() {
                 onOpenChange={handleModalOpenChange}
                 dontShowAgain={dontShowAgain}
                 onDontShowAgainChange={setDontShowAgain}
-                container={pageContainer}
             />
         </div>
     );

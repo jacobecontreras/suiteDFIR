@@ -86,15 +86,12 @@ export function BackupsCarousel({
     // Empty state
     if (backups.length === 0) {
         return (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
-                <div className="text-center">
-                    <Smartphone size={48} className="mx-auto mb-3 opacity-20" />
-                    <p className="text-lg">
-                        {searchQuery || filter !== 'all'
-                            ? 'No matching results'
-                            : 'No backups found'}
-                    </p>
-                </div>
+            <div className="h-full flex items-center justify-center text-gray-500">
+                <p className="text-lg">
+                    {searchQuery || filter !== 'all'
+                        ? 'No matching results'
+                        : 'No backups found'}
+                </p>
             </div>
         );
     }

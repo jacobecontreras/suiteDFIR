@@ -3,7 +3,6 @@ import { LoadingPage } from '@/components/ui/LoadingPage'
 import { DBViewerProvider, useDBViewer } from '@/context/DBViewerContext'
 import { useCase } from '@/context/CaseContext'
 import { API } from '@/lib/api'
-import { Database } from 'lucide-react'
 import { DBViewerMain } from '@/components/db-viewer/DBViewerMain'
 import type { DatabaseInfo } from '@/context/DBViewerContext'
 
@@ -69,11 +68,8 @@ function DBViewerContent() {
 
     if (!selectedCaseId) {
         return (
-            <div className="h-full w-full flex items-center justify-center text-[#666] py-[3vh] px-[9vh]">
-                <div className="text-center">
-                    <Database className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg">Select a case to view databases</p>
-                </div>
+            <div className="h-full w-full flex items-center justify-center text-gray-500 py-[3vh] px-[9vh]">
+                <p className="text-lg">Select a case to view databases</p>
             </div>
         )
     }
@@ -88,12 +84,8 @@ function DBViewerContent() {
 
     if (availableDatabases.length === 0) {
         return (
-            <div className="h-full w-full flex items-center justify-center text-[#666] py-[3vh] px-[9vh]">
-                <div className="text-center">
-                    <Database className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg">No databases found in this case</p>
-                    <p className="text-sm mt-2">Databases will appear here when reports contain SQLite files</p>
-                </div>
+            <div className="h-full w-full flex items-center justify-center text-gray-500 py-[3vh] px-[9vh]">
+                <p className="text-lg">No databases found</p>
             </div>
         )
     }

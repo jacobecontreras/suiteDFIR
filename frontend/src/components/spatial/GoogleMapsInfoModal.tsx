@@ -1,4 +1,3 @@
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/Dialog'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { Button } from '@/components/ui/Button'
 
@@ -15,24 +14,25 @@ export function GoogleMapsInfoModal({
     onOpenChange,
     dontShowAgain,
     onDontShowAgainChange,
-    container
 }: GoogleMapsInfoModalProps) {
+    if (!open) return null
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent
-                portalContainer={container}
-                overlayClassName={container ? "absolute inset-0" : undefined}
-                className={container ? "absolute max-w-[300px] p-4 bg-[#1A1A1A] border-[#333333]" : "max-w-[300px] p-4 bg-[#1A1A1A] border-[#333333]"}
-            >
-                <DialogTitle className="sr-only">Google Maps Features</DialogTitle>
-                <DialogDescription className="text-[11px] text-gray-400 leading-relaxed space-y-2">
-                    <p>
-                        <span className="text-gray-300">OSM tiles + Nominatim geocoding</span> are free by default.
-                    </p>
-                    <p>
-                        Google Maps tiles & search autocomplete <span className="text-gray-300">require an API key</span> (set in map settings).
-                    </p>
-                </DialogDescription>
+        <>
+            {/* Overlay - scoped to the page container */}
+            <div
+                className="absolute inset-0 z-[1001] bg-black/80 animate-in fade-in-0 duration-200"
+                onClick={() => onOpenChange(false)}
+            />
+
+            {/* Content */}
+            <div className="absolute left-1/2 top-1/2 z-[1002] -translate-x-1/2 -translate-y-1/2 max-w-[300px] p-4 bg-[#1A1A1A] border border-[#333333] rounded-lg shadow-lg animate-in fade-in-0 duration-200">
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                    <span className="text-gray-300">OSM tiles + Nominatim geocoding</span> are free by default.
+                </p>
+                <p className="text-[11px] text-gray-400 leading-relaxed mt-2">
+                    Google Maps tiles & geocoding <span className="text-gray-300">require an API key</span> (set in map settings).
+                </p>
 
                 <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#2A2A2A]">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -52,7 +52,7 @@ export function GoogleMapsInfoModal({
                         Got it
                     </Button>
                 </div>
-            </DialogContent>
-        </Dialog>
+            </div>
+        </>
     )
 }
