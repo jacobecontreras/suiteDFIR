@@ -1,27 +1,8 @@
 import { RefObject } from 'react';
 import { FileText, Smartphone, FolderOpen, Download, Trash2 } from 'lucide-react';
 import { LibraryCard } from '@/components/ui/LibraryCard';
-
-export interface Report {
-    id: number;
-    name: string;
-    path: string;
-    url: string;
-    tool: 'ileapp' | 'aleapp';
-    created_at: string;
-    size?: string;
-}
-
-export interface Backup {
-    id: number;
-    name: string;
-    device_name: string;
-    path: string;
-    created_at: string;
-    size?: string;
-    type: 'ios' | 'android';
-    status?: string;
-}
+import type { Report } from '@/types/report';
+import type { Backup } from '@/types/backup';
 
 export type LibraryItem = Report | Backup;
 

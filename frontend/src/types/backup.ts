@@ -9,11 +9,11 @@ export interface Device {
 export interface Backup {
     id: number
     name: string
-    device_udid: string
+    device_udid?: string
     device_name: string
     path: string
     created_at: string
-    status: 'completed' | 'failed' | 'in_progress' | 'cancelled'
+    status?: string
     size?: string
     progress?: number
     type: string

@@ -54,7 +54,7 @@ export function BackupLibraryPanel({
                             label: backup.status === 'in_progress'
                                 ? `Processing... ${displayProgress}%`
                                 :
-                                backup.status.toUpperCase().replace('_', ' '),
+                                (backup.status ?? '').toUpperCase().replace('_', ' '),
                             progress: displayProgress
                         } : undefined}
                         actions={[

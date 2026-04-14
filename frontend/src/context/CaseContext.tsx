@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { Case } from "@/components/cases/CaseFormDialog"
+import type { Case } from '@/types/case'
 import { API } from '@/lib/api'
 
 interface CaseContextType {

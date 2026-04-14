@@ -7,7 +7,8 @@ import { CasesHeader } from "@/components/cases/CasesHeader"
 import { CasesFilters } from "@/components/cases/CasesFilters"
 import { CasesGrid } from "@/components/cases/CasesGrid"
 import { CasesList } from "@/components/cases/CasesList"
-import { CaseFormDialog, Case, CaseStatus } from "@/components/cases/CaseFormDialog"
+import { CaseFormDialog } from "@/components/cases/CaseFormDialog"
+import type { Case, CaseStatus } from '@/types/case'
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { useConfirmDialog } from "@/hooks/useConfirmDialog"
 

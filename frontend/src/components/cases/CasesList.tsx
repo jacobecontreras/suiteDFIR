@@ -1,6 +1,6 @@
 import { Trash2, Edit2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Case } from "@/components/cases/CaseFormDialog"
+import type { Case } from '@/types/case'
 
 interface CasesListProps {
     cases: Case[]

@@ -1,7 +1,7 @@
 import { Calendar, Trash2, Edit2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/Card"
 import { cn } from "@/lib/utils"
-import { Case } from "@/components/cases/CaseFormDialog"
+import type { Case } from '@/types/case'
 
 interface CasesGridProps {
     cases: Case[]

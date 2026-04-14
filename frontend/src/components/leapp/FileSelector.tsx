@@ -5,6 +5,7 @@ import { useDropdown } from '../../hooks/useDropdown';
 import { createLeappApi } from '@/lib/leappApi';
 import { Smartphone, HardDrive, Folder } from 'lucide-react';
 import { API } from '@/lib/api';
+import type { Backup } from '@/types/backup';
 
 // Browser endpoints are tool-agnostic, so we can use any tool
 const api = createLeappApi('ileapp');
@@ -17,19 +18,6 @@ interface FileSelectorProps {
   showFolderOption?: boolean;
   tool?: string;
   caseId?: number;
-}
-
-interface Backup {
-  id: number;
-  name: string;
-  path: string;
-  device_name: string;
-  device_udid: string;
-  created_at: string;
-  status: string;
-  size?: string;
-  progress?: number;
-  type: string;
 }
 
 export default function FileSelector({

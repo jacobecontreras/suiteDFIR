@@ -3,17 +3,7 @@ import { Smartphone, FolderOpen, Download, Trash2 } from 'lucide-react';
 import { PhoneMockup } from '@/components/ui/PhoneMockup';
 import Iphone15Pro from '@/components/ui/devices/Iphone15Pro';
 import AndroidPhone from '@/components/ui/devices/AndroidPhone';
-
-export interface Backup {
-    id: number;
-    name: string;
-    device_name: string;
-    path: string;
-    created_at: string;
-    size?: string;
-    type: 'ios' | 'android';
-    status?: string;
-}
+import type { Backup } from '@/types/backup';
 
 export interface BackupsCarouselProps {
     backups: Backup[];
@@ -182,7 +172,7 @@ export function BackupsCarousel({
                                         </button>
                                     </div>
                                 </div>
-                                <PhoneMockup type={backup.type} />
+                                <PhoneMockup type={backup.type as 'ios' | 'android'} />
                             </div>
                         ) : (
                             <div className="relative flex-shrink-0">

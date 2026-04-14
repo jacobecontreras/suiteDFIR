@@ -5,6 +5,6 @@ export interface Report {
     url: string;
     tool: 'ileapp' | 'aleapp';
     created_at: string;
-    size: string;
-    artifact_count: number;
+    size?: string;
+    artifact_count?: number;
 }

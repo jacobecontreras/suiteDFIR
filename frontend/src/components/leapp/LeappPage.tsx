@@ -13,21 +13,12 @@ import { useConfirmDialog, useHistoricalLogs } from '@/hooks';
 
 import { API } from '@/lib/api';
 import { generateProgressBar } from '@/lib/progress';
+import type { Report } from '@/types/report';
 
 interface LeappPageProps {
     tool: 'ileapp' | 'aleapp';
     toolName: string;
     actionSlot?: ReactNode;
-}
-
-interface Report {
-    id: number;
-    name: string;
-    path: string;
-    url: string;
-    tool: 'ileapp' | 'aleapp';
-    created_at: string;
-    size: string;
 }
 
 function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionSlot?: ReactNode }) {

@@ -1,16 +1,7 @@
 import { useEffect, RefObject } from 'react';
 import { FileText, X, Maximize2 } from 'lucide-react';
 import { API } from '@/lib/api';
-
-export interface Report {
-    id: number;
-    name: string;
-    path: string;
-    url: string;
-    tool: 'ileapp' | 'aleapp';
-    created_at: string;
-    size?: string;
-}
+import type { Report } from '@/types/report';
 
 export interface ReportsViewProps {
     selectedReport: Report | null;

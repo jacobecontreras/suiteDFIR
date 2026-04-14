@@ -7,18 +7,7 @@ import { useDragScroll } from '@/hooks/useDragScroll';
 import { useCase } from '@/context/CaseContext';
 import { API } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
-
-interface Backup {
-    id: number;
-    name: string;
-    device_name: string;
-    path: string;
-    created_at: string;
-    status: string;
-    type: 'ios' | 'android';
-    size?: string;
-    progress?: number;
-}
+import type { Backup } from '@/types/backup';
 
 export default function BackupsListPage() {
     const [backups, setBackups] = useState<Backup[]>([]);

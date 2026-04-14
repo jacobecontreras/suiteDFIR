@@ -7,7 +7,8 @@ import { API } from "@/lib/api"
 import { User, Phone, Mail, FileText, Info, ShieldAlert, Activity } from 'lucide-react'
 
 import { Edit2 } from 'lucide-react'
-import { CaseFormDialog, Case } from "@/components/cases/CaseFormDialog"
+import { CaseFormDialog } from "@/components/cases/CaseFormDialog"
+import type { Case } from '@/types/case'
 
 export default function CaseDetailsWidget({ className }: { className?: string }) {
     const { selectedCaseId, cases } = useCase()

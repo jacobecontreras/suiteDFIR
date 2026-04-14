@@ -8,7 +8,7 @@ import {
     SelectContent,
     SelectItem
 } from "@/components/ui/Select"
-import { CaseStatus } from "@/components/cases/CaseFormDialog"
+import type { CaseStatus } from '@/types/case'
 
 interface CasesFiltersProps {
     searchQuery: string
