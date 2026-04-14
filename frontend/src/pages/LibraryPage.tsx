@@ -415,7 +415,7 @@ export default function LibraryPage() {
 
                 {/* Backups View - Phone Carousel */}
                 {viewMode === 'backups' && (
-                    <div ref={carouselContainerRef} className="relative h-full">
+                    <div ref={carouselContainerRef} className="relative h-full z-10">
                         <BackupsCarousel
                             backups={filteredBackups}
                             selectedBackup={selectedBackup}
@@ -433,7 +433,7 @@ export default function LibraryPage() {
 
             {/* Bottom Section - Library */}
             {!isFullscreen && (
-                <div className="flex flex-col gap-2 min-h-0 pb-2 pt-2 px-4">
+                <div className="flex flex-col gap-2 min-h-0 pb-2 pt-2">
                     <LibraryFilters
                         viewMode={viewMode}
                         reportFilter={reportFilter}

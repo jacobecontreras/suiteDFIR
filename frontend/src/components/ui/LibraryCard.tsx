@@ -41,7 +41,7 @@ export function LibraryCard({
     return (
         <div
             className={cn(
-                "group flex-shrink-0 w-72 min-h-[60px] rounded-lg px-2.5 flex items-center gap-2 border transition-colors cursor-pointer relative overflow-hidden",
+                "group flex-shrink-0 w-72 min-h-[60px] rounded-lg p-2.5 flex items-center gap-2 border transition-colors cursor-pointer relative overflow-hidden",
                 isSelected
                     ? "bg-[#1A1A1A] border-white/40"
                     : "bg-[#1A1A1A] border-white/10 hover:border-white/20",
@@ -66,7 +66,7 @@ export function LibraryCard({
             )}
 
             {/* Content */}
-            <div className="flex-1 min-w-0 flex flex-col justify-center py-1 overflow-hidden relative z-10">
+            <div className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden relative z-10">
                 <h3 className="text-white font-medium truncate text-xs w-full text-left mb-0.5">
                     {title}
                 </h3>

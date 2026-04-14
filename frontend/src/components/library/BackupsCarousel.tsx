@@ -102,7 +102,8 @@ export function BackupsCarousel({
     return (
         <div
             ref={carouselContainerRef}
-            className="relative h-full overflow-hidden"
+            className="relative h-full"
+            style={{ overflowX: 'clip', overflowY: 'visible' }}
             tabIndex={0}
             onKeyDown={(e) => {
                 if (backups.length <= 1) return;

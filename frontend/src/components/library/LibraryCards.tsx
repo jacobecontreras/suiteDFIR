@@ -59,8 +59,8 @@ export function LibraryCards({
     const showScrollbar = !isEmpty && thumbWidth < 100;
 
     return (
-        <div className="min-h-[160px] max-h-[240px] flex-shrink-0 flex flex-col gap-0 border border-white/10 rounded-xl bg-[#1A1A1A]/30 overflow-hidden pb-2">
-            <div className="flex-1 flex flex-col gap-2 min-h-0 pb-2 pt-2 px-4">
+        <div className="max-h-[240px] flex-shrink-0 flex flex-col gap-0 border border-white/10 rounded-xl bg-[#1A1A1A]/30 overflow-hidden pb-1">
+            <div className="flex-1 flex flex-col gap-2 min-h-0 p-4">
                 {/* Horizontal Scrollable Cards */}
                 <div
                     ref={scrollContainerRef}
@@ -89,6 +89,7 @@ export function LibraryCards({
                                         key={item.id}
                                         data-report-id={isReport ? report!.id : undefined}
                                         data-backup-id={!isReport ? backup!.id : undefined}
+                                        className="min-h-[48px]"
                                         title={item.name}
                                         isSelected={selectedId === item.id}
                                         onClick={() => onSelect(item)}
