@@ -1,5 +1,5 @@
-import Iphone15Pro from '@/components/ui/shadcn-io/iphone-15-pro';
-import AndroidPhone from '@/components/ui/shadcn-io/android-phone';
+import Iphone15Pro from '@/components/ui/devices/Iphone15Pro';
+import AndroidPhone from '@/components/ui/devices/AndroidPhone';
 
 interface PhoneMockupProps {
     type: 'ios' | 'android';
