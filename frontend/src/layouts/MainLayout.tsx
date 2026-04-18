@@ -7,6 +7,7 @@ import { DashboardProvider } from '@/context/DashboardContext'
 import { SpatialProvider } from '@/context/SpatialContext'
 import { LeappProvider } from '@/context/LeappContext'
 import { BackupProvider } from '@/context/BackupContext'
+import { PhotosProvider } from '@/context/PhotosContext'
 import { LoadingPage } from '@/components/ui/LoadingPage'
 
 export default function MainLayout() {
@@ -24,6 +25,7 @@ export default function MainLayout() {
             <DashboardProvider>
                 <SpatialProvider>
                     <LeappProvider>
+                        <PhotosProvider>
                         <BackupProvider type="ios">
                         <BackupProvider type="android">
                                 <SidebarProvider defaultOpen={defaultOpen} className="h-full w-full min-h-0 overflow-hidden">
@@ -36,6 +38,7 @@ export default function MainLayout() {
                                 </SidebarProvider>
                         </BackupProvider>
                         </BackupProvider>
+                        </PhotosProvider>
                     </LeappProvider>
                 </SpatialProvider>
             </DashboardProvider>

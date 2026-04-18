@@ -18,6 +18,7 @@ interface FileSelectorProps {
   showFolderOption?: boolean;
   tool?: string;
   caseId?: number;
+  onBackupSelect?: (backup: Backup) => void;
 }
 
 export default function FileSelector({
@@ -28,7 +29,8 @@ export default function FileSelector({
   showFolderOption = true,
   tool,
   caseId,
-  label
+  label,
+  onBackupSelect,
 }: FileSelectorProps & { label?: string }) {
   const fileDropdown = useDropdown();
   const [backups, setBackups] = useState<Backup[]>([]);
@@ -140,6 +142,7 @@ export default function FileSelector({
                           }
                         }
                         onChange(finalPath);
+                        onBackupSelect?.(backup);
                         fileDropdown.close();
                       }}
                       className="px-3 py-2 hover:bg-[#2a2a2a] cursor-pointer transition-colors flex items-center gap-3 border-b border-[#262626] last:border-b-0"

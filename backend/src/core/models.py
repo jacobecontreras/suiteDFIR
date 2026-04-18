@@ -546,3 +546,104 @@ class ExportStarted(BaseModel):
     """Response when export job is created."""
     job_id: int
     message: str
+
+# PHOTO EXTRACTION MODELS
+
+class PhotoExtractionRequest(BaseModel):
+    """Payload for starting a photo extraction from a backup."""
+    backup_id: int
+    case_id: int
+    password: Optional[str] = None
+    name: Optional[str] = None
+    selected_artifacts: Optional[List[str]] = None  # None = run all
+
+class PhotoExtraction(BaseModel):
+    """Response model for a photo extraction record."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    case_id: int
+    backup_id: int
+    device_name: str
+    output_path: str
+    image_count: int
+    indexed: bool
+    status: str
+    created_at: str
+
+class PhotoExtractionStarted(BaseModel):
+    """Response when photo extraction is initiated."""
+    task_id: str
+    extraction_id: int
+    message: str
+
+class PhotoMetadata(BaseModel):
+    """Photo metadata from EXIF, Photos.sqlite, etc."""
+    date_created: Optional[str] = None
+    date_modified: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    media_type: Optional[str] = None
+    duration: Optional[float] = None
+    camera_make: Optional[str] = None
+    camera_model: Optional[str] = None
+    lens_model: Optional[str] = None
+    iso: Optional[float] = None
+    aperture: Optional[float] = None
+    focal_length: Optional[float] = None
+    shutter_speed: Optional[float] = None
+    flash_fired: Optional[bool] = None
+    metering_mode: Optional[int] = None
+    white_balance: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    original_width: Optional[int] = None
+    original_height: Optional[int] = None
+    favorite: Optional[bool] = None
+    hidden: Optional[bool] = None
+    trashed: Optional[bool] = None
+    original_filename: Optional[str] = None
+    domain: Optional[str] = None
+    relative_path: Optional[str] = None
+    classification: Optional[str] = None
+
+class PhotoItem(BaseModel):
+    """Single photo in a gallery listing."""
+    file_id: str
+    thumbnail_url: str
+    full_url: str
+    metadata: Optional[PhotoMetadata] = None
+
+class PhotoListResponse(BaseModel):
+    """Paginated photo list response."""
+    photos: List[PhotoItem]
+    total: int
+    page: int
+    page_size: int
+
+class PhotoSearchRequest(BaseModel):
+    """Payload for semantic photo search."""
+    query: str
+    threshold: float = 0.20
+
+class PhotoThumbnailWarmRequest(BaseModel):
+    """Payload for scheduling thumbnail warmup."""
+    file_ids: List[str]
+
+class PhotoSearchResult(BaseModel):
+    """Single search result with similarity score."""
+    file_id: str
+    score: float
+    thumbnail_url: str
+    full_url: str
+    metadata: Optional[PhotoMetadata] = None
+
+class PhotoSearchResponse(BaseModel):
+    """Semantic search results."""
+    results: List[PhotoSearchResult]
+    query: str
+    total: int
+
+class ModelStatusResponse(BaseModel):
+    """CLIP model download status."""
+    downloaded: bool
+    size_mb: Optional[float] = None

@@ -6,6 +6,7 @@ backup_tasks = {}
 active_backups = {}
 processing_tasks = {}
 export_tasks = {}
+photos_tasks = {}
 
 # Event Broadcasting State
 

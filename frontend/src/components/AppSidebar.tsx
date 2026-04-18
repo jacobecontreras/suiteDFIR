@@ -5,7 +5,8 @@ import {
     PanelLeft,
     Archive,
     ChevronLeft,
-    Database
+    Database,
+    Image
 } from "lucide-react"
 
 import {
@@ -56,7 +57,12 @@ const data = {
 
     data_analysis: [
         {
-            title: "GeoSpatial",
+            title: "Photos",
+            url: "/photos",
+            icon: Image,
+        },
+        {
+            title: "Map",
             url: "/spatial",
             icon: Box,
         },
@@ -172,7 +178,7 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
                 <SidebarGroup>
-                    <SidebarGroupLabel className={`text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>Data Analysis</SidebarGroupLabel>
+                    <SidebarGroupLabel className={`text-[10px] font-medium text-sidebar-foreground/70 uppercase tracking-wider transition-opacity ${isHeaderVisible ? 'duration-150 opacity-100' : 'duration-0 opacity-0'}`}>Data Explorer</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {data.data_analysis.map((item) => (

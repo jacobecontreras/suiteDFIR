@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, ReactNode } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button, Input, Dropdown, ConfirmDialog } from '@/components/ui';
 import { useProfiles, useDropdown, useConfirmDialog } from '../../hooks';
 import { Module } from '../../types/leapp';
@@ -35,10 +35,9 @@ const slowModules = new Set([
 interface ModuleSelectorProps {
   tool: 'ileapp' | 'aleapp';
   isProcessing?: boolean;
-  headerSlot?: ReactNode;
 }
 
-export default function ModuleSelector({ tool, isProcessing, headerSlot }: ModuleSelectorProps) {
+export default function ModuleSelector({ tool, isProcessing }: ModuleSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [profileNameInput, setProfileNameInput] = useState('');
   const confirmDialog = useConfirmDialog();
@@ -287,12 +286,6 @@ export default function ModuleSelector({ tool, isProcessing, headerSlot }: Modul
           />
         </div>
       </div>
-
-      {headerSlot ? (
-        <div className="mb-3 h-9 shrink-0">
-          {headerSlot}
-        </div>
-      ) : null}
 
       <div className="flex-1 overflow-hidden rounded-lg border flex flex-col"
         style={{ backgroundColor: '#171717', borderColor: '#333333' }}>

@@ -71,6 +71,18 @@ DATA_DIR = str(BASE_DIR / "data")
 DB_PATH = str(BASE_DIR / "data" / "app.db")
 
 
+# Photos Configuration
+PHOTOS_DIR = str(BASE_DIR / "data" / "photos")
+
+def get_photogrep_path() -> str:
+    """Get the parent directory containing the photogrep package."""
+    if getattr(sys, 'frozen', False):
+        return str(Path(sys.executable).parent.parent / "forensic-tools" / "photogrep")
+    else:
+        return str(BASE_DIR / "forensic-tools" / "photogrep")
+
+PHOTOGREP_PATH = get_photogrep_path()
+
 # Cache Configuration
 CACHE_DIR = BASE_DIR / "data" / "cache"
 COORDS_DB = str(CACHE_DIR / "coordinates.db")

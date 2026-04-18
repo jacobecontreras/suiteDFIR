@@ -28,7 +28,7 @@ from core.config import BASE_DIR
 IS_DEV = os.environ.get('SUITEDFIR_DEV', 'false').lower() == 'true'
 
 from services.plugin_manager import load_plugins
-from api import cases, reports, profiles, dashboard, processing, backups, system, tools, settings, tiles, db_viewer, case_exports
+from api import cases, reports, profiles, dashboard, processing, backups, system, tools, settings, tiles, db_viewer, case_exports, photos
 from utils.device_watcher import start_device_watcher, stop_device_watcher
 from services.case_manager import case_manager
 
@@ -105,18 +105,20 @@ app.include_router(settings.router)
 app.include_router(tiles.router)
 app.include_router(db_viewer.router)
 app.include_router(case_exports.router)
+app.include_router(photos.router)
 
-from core.config import TOOLS_CONFIG, REPORTS_DIR, BACKUPS_DIR, TOOLS_DIR, DATA_DIR
+from core.config import TOOLS_CONFIG, REPORTS_DIR, BACKUPS_DIR, TOOLS_DIR, DATA_DIR, PHOTOS_DIR
 
 # Ensure required directories exist
 IMPORTS_DIR = os.path.join(DATA_DIR, "imports")
-for d in [REPORTS_DIR, BACKUPS_DIR, TOOLS_DIR, IMPORTS_DIR]:
+for d in [REPORTS_DIR, BACKUPS_DIR, TOOLS_DIR, IMPORTS_DIR, PHOTOS_DIR]:
     if not os.path.exists(d):
         os.makedirs(d, exist_ok=True)
 
 # Mount static directories
 app.mount("/reports", StaticFiles(directory=REPORTS_DIR), name="reports")
 app.mount("/imports", StaticFiles(directory=IMPORTS_DIR), name="imports")
+app.mount("/photos", StaticFiles(directory=PHOTOS_DIR), name="photos")
 
 if __name__ == "__main__":
     import sys

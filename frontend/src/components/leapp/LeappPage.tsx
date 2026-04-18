@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import LogViewer from './LogViewer';
 import FileSelector from './FileSelector';
 import ModuleSelector from './ModuleSelector';
@@ -18,10 +18,10 @@ import type { Report } from '@/types/report';
 interface LeappPageProps {
     tool: 'ileapp' | 'aleapp';
     toolName: string;
-    actionSlot?: ReactNode;
+    toolSelector?: ReactNode;
 }
 
-function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionSlot?: ReactNode }) {
+function LeappContent({ tool, toolSelector }: { tool: 'ileapp' | 'aleapp'; toolSelector?: ReactNode }) {
     const outputFolder = '';
     const { states, updateConfig, clearLogs, clearProcessingReportName, fetchModules, stopProcessing } = useLeapp();
     const toolState = states[tool];
@@ -173,6 +173,9 @@ function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionS
             <div className="flex-1 flex gap-[9vh] min-h-0">
                 {/* Left Panel - Input & Controls */}
                 <div className="flex-1 basis-0 min-w-0 h-full flex flex-col gap-6 min-h-0">
+                    {/* Tool Selector */}
+                    {toolSelector}
+
                     {/* Input & Report Name Row */}
                     <div className="flex gap-6">
                         {/* Report Name Section */}
@@ -204,7 +207,6 @@ function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionS
                     <ModuleSelector
                         tool={tool}
                         isProcessing={isProcessing}
-                        headerSlot={actionSlot}
                     />
 
                     {/* Process Controls */}
@@ -342,6 +344,6 @@ function LeappContent({ tool, actionSlot }: { tool: 'ileapp' | 'aleapp'; actionS
     );
 }
 
-export default function LeappPage({ tool, actionSlot }: LeappPageProps) {
-    return <LeappContent tool={tool} actionSlot={actionSlot} />;
+export default function LeappPage({ tool, toolSelector }: LeappPageProps) {
+    return <LeappContent tool={tool} toolSelector={toolSelector} />;
 }

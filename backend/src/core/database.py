@@ -97,6 +97,21 @@ SCHEMA = {
             completed_at TIMESTAMP,
             FOREIGN KEY (case_id) REFERENCES cases(id)
         )
+    """,
+    "photo_extractions": """
+        CREATE TABLE IF NOT EXISTS photo_extractions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_id INTEGER NOT NULL,
+            backup_id INTEGER NOT NULL,
+            device_name TEXT NOT NULL,
+            output_path TEXT NOT NULL,
+            image_count INTEGER DEFAULT 0,
+            indexed BOOLEAN DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (case_id) REFERENCES cases(id),
+            FOREIGN KEY (backup_id) REFERENCES backups(id)
+        )
     """
 }
 
