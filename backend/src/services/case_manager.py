@@ -86,8 +86,9 @@ class CaseManager:
         # Check if case exists
         case = await self.get_case(case_id)
 
-        # Fetch associated files to delete
-        backup_rows = await db_fetch_all('SELECT path FROM backups WHERE case_id = ?', (case_id,))
+        # Fetch associated files to delete. Selecting `id` as well so future
+        # per-row secret teardown (e.g. keyring entries) has the key it needs.
+        backup_rows = await db_fetch_all('SELECT id, path FROM backups WHERE case_id = ?', (case_id,))
         backup_paths = [row['path'] for row in backup_rows]
 
         report_rows = await db_fetch_all('SELECT path FROM reports WHERE case_id = ?', (case_id,))

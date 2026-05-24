@@ -10,6 +10,7 @@ from typing import Optional, List, Dict, Any
 
 from core.config import BACKUPS_DIR
 from core.database import db_execute, db_fetch_one, db_fetch_all, db_execute_return_id
+from core.crypto import encrypt as encrypt_secret
 from core.state import active_backups, backup_tasks
 from utils.helpers import broadcast_event, get_connected_devices, get_binary_path, check_backup_encryption
 from utils.fs_ops import FileOperations
@@ -69,11 +70,13 @@ class BackupManager:
         backup_path = os.path.join(BACKUPS_DIR, f"{request.name}_{request.udid}_{int(time.time())}")
         os.makedirs(backup_path, exist_ok=True)
         
-        # Create DB entry
+        # Create DB entry. Password is encrypted at rest via core.crypto; the
+        # plaintext is kept only in memory for the subprocess that needs it.
         device_type = device.get('type', 'ios')
+        encrypted_password = encrypt_secret(request.password) if request.password else None
         backup_id = await db_execute_return_id(
             "INSERT INTO backups (name, device_udid, device_name, path, status, password, case_id, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (request.name, request.udid, device['name'], backup_path, 'in_progress', request.password, request.case_id, device_type)
+            (request.name, request.udid, device['name'], backup_path, 'in_progress', encrypted_password, request.case_id, device_type)
         )
 
         # Initialize task queue for SSE streaming (maxsize prevents unbounded memory growth)
