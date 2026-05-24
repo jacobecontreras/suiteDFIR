@@ -49,7 +49,8 @@ def open_path_secured(path: str, allowed_dir: str, resource_name: str = "Resourc
         Dict with 'success' and 'message' on success, or 'error' and 'status_code' on failure
     """
     # Security check: ensure path is within allowed directory
-    if not os.path.abspath(path).startswith(os.path.abspath(allowed_dir)):
+    from utils.fs_ops import FileOperations
+    if not FileOperations.validate_path_security(path, allowed_dir):
         return {"error": "Access denied", "status_code": 403}
     
     # Existence check

@@ -96,6 +96,8 @@ async def get_kml_data(path: str):
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="KML file not found")
+    except PermissionError:
+        raise HTTPException(status_code=400, detail="Invalid path")
     except ValueError as e:
         raise HTTPException(status_code=413, detail=str(e))
 

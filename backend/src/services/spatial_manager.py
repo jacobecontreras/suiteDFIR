@@ -118,14 +118,20 @@ class SpatialManager:
         loop = asyncio.get_running_loop()
         
         def _process_kml():
+            from utils.fs_ops import FileOperations
             if path.startswith("/imports/"):
                 clean_path = path.replace("/imports/", "", 1)
                 kml_abs_path = os.path.join(IMPORTS_DIR, clean_path)
+                allowed_root = IMPORTS_DIR
             else:
                 # Clean up path (remove leading /reports/)
                 clean_path = path.replace("/reports/", "", 1)
                 kml_abs_path = os.path.join(REPORTS_DIR, clean_path)
-            
+                allowed_root = REPORTS_DIR
+
+            if not FileOperations.validate_path_security(kml_abs_path, allowed_root):
+                raise PermissionError(f"Invalid KML path: {path}")
+
             if not os.path.exists(kml_abs_path):
                 raise FileNotFoundError(f"KML file not found: {path}")
 

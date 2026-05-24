@@ -84,12 +84,14 @@ async def global_exception_handler(request, exc):
     )
 
 # Configure CORS - MUST be before route registration so middleware wraps all handlers
+# Restrict to the Electron app's actual origins: app:// in prod, Vite dev server in dev.
+_allowed_origins = ["http://localhost:3000"] if IS_DEV else ["app://."]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 # Include Routers
@@ -172,34 +174,38 @@ if __name__ == "__main__":
     # In development, use module string for reload support
     is_bundled = getattr(sys, 'frozen', False)
     
+    # Bind to loopback only — the backend is local to the Electron app and must
+    # not be reachable from other hosts on the network.
+    BIND_HOST = "127.0.0.1"
+
     if args.port == 0:
         # Dynamic port allocation: bind to 0 to find a free port, then close and let Uvicorn bind
         # This avoids passing file descriptors which is problematic on Windows (AF_UNIX error)
         import socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(('0.0.0.0', 0))
+        sock.bind((BIND_HOST, 0))
         port = sock.getsockname()[1]
         sock.close()
-        
+
         # Vital: Print the port so Electron can read it
         print(f"SUITEDFIR_BACKEND_PORT:{port}", flush=True)
 
         # Run Uvicorn with the explicit port
         if is_bundled:
             # Production: use in-memory app object, no reload
-            uvicorn.run(app, host="0.0.0.0", port=port)
+            uvicorn.run(app, host=BIND_HOST, port=port)
         else:
             # Development: use module string for reload, gated by IS_DEV
             # Use src.main:app for correct module resolution in reload subprocesses
             app_module = "src.main:app" if IS_DEV else "main:app"
-            uvicorn.run(app_module, host="0.0.0.0", port=port, reload=IS_DEV)
+            uvicorn.run(app_module, host=BIND_HOST, port=port, reload=IS_DEV)
     else:
         # Standard port binding
         if is_bundled:
             # Production: use in-memory app object, no reload
-            uvicorn.run(app, host="0.0.0.0", port=args.port)
+            uvicorn.run(app, host=BIND_HOST, port=args.port)
         else:
             # Development: use module string for reload, gated by IS_DEV
             # Use src.main:app for correct module resolution in reload subprocesses
             app_module = "src.main:app" if IS_DEV else "main:app"
-            uvicorn.run(app_module, host="0.0.0.0", port=args.port, reload=IS_DEV)
+            uvicorn.run(app_module, host=BIND_HOST, port=args.port, reload=IS_DEV)
