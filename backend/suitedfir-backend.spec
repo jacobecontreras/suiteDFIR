@@ -80,6 +80,15 @@ hiddenimports = [
     'google',
     'google.protobuf',
     'google.protobuf.descriptor',
+    'cryptography',
+    'cryptography.fernet',
+    'cryptography.hazmat.backends.openssl',
+    'keyring',
+    'keyring.backends',
+    'keyring.backends.macOS',
+    'keyring.backends.Windows',
+    'keyring.backends.SecretService',
+    'keyring.backends.fail',
 ]
 
 # Collect all submodules for key forensic packages to ensure they are fully bundled
@@ -96,6 +105,7 @@ hiddenimports += collect_submodules('folium')
 hiddenimports += collect_submodules('mdplist')
 hiddenimports += collect_submodules('google')
 hiddenimports += collect_submodules('google.protobuf')
+hiddenimports += collect_submodules('keyring')
 
 binaries = []
 zipfiles = []

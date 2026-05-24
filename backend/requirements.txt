@@ -76,6 +76,7 @@ torch
 open-clip-torch
 faiss-cpu
 cryptography
+keyring
 
 # =============================================================================
 # Build Tools (for PyInstaller bundling)
