@@ -1,0 +1,89 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+suiteDFIR is a **single-user desktop application** that runs entirely on the investigator's workstation. Forensic extraction, parsing, and case data stay local — the backend binds to loopback only and the only outbound network calls are for map tiles and geocoding (Google/Carto/OSM/Nominatim). There is no multi-tenancy, no auth layer, no remote API, and no shared state to coordinate; do not add features (sessions, user IDs, RBAC, server-side rate limiting, etc.) that assume otherwise.
+
+## Common Commands
+
+Install everything (root, frontend, electron) — backend deps go through pip separately:
+```bash
+yarn install:all
+cd backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+```
+
+Run the full app in dev (Vite on :3000 + Electron spawning the venv backend on :8000 with hot reload):
+```bash
+yarn dev:electron
+```
+
+Run pieces in isolation:
+```bash
+yarn dev                          # Vite only (frontend at :3000, expects backend at :8000)
+yarn electron                     # Electron only (will spawn backend itself)
+cd backend && source venv/bin/activate && python -m src.main --port 8000   # backend only, dev style
+```
+
+Build:
+```bash
+yarn build:backend                # PyInstaller bundle → backend/dist/suiteDFIR Backend/
+yarn build:frontend               # Vite static build → frontend/dist/
+yarn build:mac | build:linux | build:win   # full platform bundle (calls scripts/build-*.sh)
+```
+
+Tests (pytest, async-aware):
+```bash
+cd backend && source venv/bin/activate
+pytest                            # whole suite
+pytest tests/api/test_cases_api.py
+pytest tests/services/test_case_manager.py::test_create_case
+pytest -k "encrypt"
+```
+
+Frontend lint: `cd frontend && yarn lint`. No frontend tests exist.
+
+## Architecture
+
+Three tiers stitched together by Electron:
+
+1. **Electron shell** (`electron/`) — `main.js` is the entry point. On launch it shows `splash.html`, then `backend.js` spawns the Python process, polls `GET /api/health` until it succeeds, then opens the main BrowserWindow via `windows.js`. The renderer asks for the backend URL via the `get-backend-url` IPC handler (exposed in `preload.js` as `window.electronAPI.getBackendUrl()`).
+2. **Python FastAPI backend** (`backend/src/`) — `main.py` registers all routers under `api/`, mounts `/reports`, `/imports`, `/photos` as static, runs `core.database.init_database()`, `services.plugin_manager.load_plugins()`, and `utils.device_watcher` on lifespan startup. **Always binds to 127.0.0.1** (loopback only; see `BIND_HOST` in `main.py`). CORS is locked to `app://.` in prod and `http://localhost:3000` in dev — do not loosen.
+3. **React/Vite frontend** (`frontend/src/`) — React 19 + TypeScript + Tailwind v4 + shadcn-style components (`components/ui/`). Routes live in `App.tsx`. Per-domain Context providers in `context/` (e.g. `CaseContext`, `BackupContext`) cache state across pages; the corresponding hooks in `hooks/` are the public read/write API for that domain. `lib/api.ts` resolves the backend base URL once via the Electron IPC, then exposes synchronous `API.path()` / `API.url()` helpers.
+
+### Backend port handshake
+
+In dev, Electron spawns `python -m src.main --port <fixed>` (default 8000, override with `SUITEDFIR_DEV_PORT`) and sets `SUITEDFIR_DEV=true` to enable Uvicorn reload. In production, Electron spawns the bundled `suitedfir-backend --port 0`, which binds to an ephemeral loopback port and prints `SUITEDFIR_BACKEND_PORT:<n>` to stdout — `electron/backend.js` scrapes that line and exposes the resulting URL through the IPC. **Do not** print other lines matching that pattern, and do not assume the port is 8000 in production code paths.
+
+### BASE_DIR is environment-dependent
+
+`backend/src/core/config.py::get_base_dir()` returns:
+- Dev (not frozen): `backend/` itself — so `data/`, `reports/`, `backups/` are inside the repo.
+- macOS prod: `~/Library/Application Support/suiteDFIR`
+- Windows prod: `~/AppData/Local/suiteDFIR`
+- Linux prod: `~/.suitedfir`
+
+All path constants (`DB_PATH`, `REPORTS_DIR`, `BACKUPS_DIR`, `PHOTOS_DIR`, `CACHE_DIR`, `PHOTOGREP_PATH`) are derived from `BASE_DIR` at import time. Services do `from core.config import DB_PATH`, which captures the value into their own namespace — so any test or runtime override has to happen **before** those modules import.
+
+### Forensic-tool plugin model
+
+iLEAPP and aLEAPP are vendored under `backend/forensic-tools/leapp-tools/{iLEAPP,ALEAPP}` and are loaded dynamically by `services/plugin_manager.py`. `safe_tool_execution()` is a context manager that swaps `sys.path`, `os.cwd`, and purges conflicting modules (`scripts.*`, `google.*`, `protobuf.*`) before each tool loads, because the two tools share top-level package names that would otherwise collide. The loader is then monkey-patched to be fault-tolerant — a single broken artifact must not abort plugin discovery. Available modules end up in `core.state.available_modules[tool_id]`.
+
+In the bundled app the tools are run by re-invoking the backend executable with `--wrapper <script.py> [args...]` (handled in `main.py`). That branch reconfigures stdio, forces the pure-Python protobuf implementation, and execs the script as `__main__`. New tools that shell out to external Python scripts should use the same wrapper path so they inherit the bundled interpreter.
+
+### Production packaging (macOS reference)
+
+`scripts/build-mac.sh` builds the PyInstaller bundle, builds the Vite frontend, runs `electron-builder --dir`, and **manually** copies the backend, helper `bin/`, `forensic-tools/`, and `frontend/dist` into `Resources/`. `electron-builder`'s `extraResource` is intentionally not used. macOS helper binaries (e.g. libimobiledevice) are signed ad-hoc (`codesign --force --deep --sign -`) so they remain portable.
+
+### Encryption at rest
+
+`backend/src/core/crypto.py` stores a Fernet master key in the OS keychain (macOS/Windows via `keyring`) or a `0600` file under `DATA_DIR/.master_key` (Linux). `encrypt()`/`decrypt()` take/return UTF-8 strings and produce ASCII base64 tokens that fit any existing TEXT column. The iOS backup `password` column already uses this. Tests stub `core.crypto._fernet` with an in-memory key — never let real keychain access leak into a test.
+
+## Test fixture conventions
+
+`backend/tests/conftest.py` rewrites `core.config` path constants to a per-session temp dir **at collection time** (before any service module imports), and replaces `core.crypto._fernet` with a deterministic test key. When adding new path constants to `core.config`, also patch them in `conftest.py`, or services that capture them via `from core.config import X` will keep pointing at the real user data dir during tests.
+
+Two fixtures matter:
+- `fresh_db` — wipes and reinitializes the SQLite DB; depend on this for any test that touches persistence.
+- `client` / `async_client` — `httpx.AsyncClient` over `ASGITransport` against a test FastAPI app that registers all routers but skips the production `lifespan` (no plugin loading, no device watcher). Tests must be `async def` and `await` requests; the sync `TestClient` is incompatible with the pinned httpx/FastAPI versions.
+
+`pyproject.toml` sets `asyncio_mode = "auto"` so async tests don't need `@pytest.mark.asyncio`.

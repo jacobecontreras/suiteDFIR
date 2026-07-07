@@ -1,11 +1,9 @@
-# suiteDFIR
-
-
-
 ![macOS](https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white) ![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white) ![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black)
 
 > **Beta (v0.1.0)**:
 >This project is current in **Beta**, While it leverages industry-standard forensic tools (iLEAPP, aLEAPP, libimobiledevice), it remains a forensic best practice to always independently verify significant findings against raw data and secondary tools.
+
+![suiteDFIR banner](frontend/public/readme-banner.webp)
 
 suiteDFIR is a forensic extraction and analysis suite built for speed, ease-of-use, and privacy.
 
