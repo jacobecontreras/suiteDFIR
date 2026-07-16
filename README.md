@@ -81,7 +81,7 @@ This project is licensed under the **Apache License 2.0**. See the [LICENSE](./L
 ## Development
 
 ### Environment Setup
-1. **Node.js**: Ensure Node.js 18.12+ is installed (20+ recommended; CI runs 20).
+1. **Node.js**: Ensure Node.js 18.12+ is installed (Node 24 LTS recommended; CI runs 24).
 2. **Yarn**: This repo pins Yarn via the `packageManager` field in `package.json`
    and expects [corepack](https://github.com/nodejs/corepack) to supply it:
    ```bash

@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -33,20 +33,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      # Must run before setup-node: the runner ships Yarn 1 globally, and
-      # setup-node's yarn cache detection shells out to `yarn --version` to
-      # locate the cache dir. Enabling corepack first makes that resolve to the
-      # version pinned in package.json#packageManager.
+      # Must run BEFORE setup-node. `cache: yarn` shells out to `yarn --version`
+      # and `yarn config get cacheFolder` to locate the cache directory. The
+      # runner ships Yarn 1 globally, so without corepack first, setup-node
+      # detects Classic and caches ~/.cache/yarn -- the wrong path for Berry,
+      # which silently yields a permanently useless cache rather than an error.
+      # Enabling corepack first makes `yarn` resolve to the version pinned in
+      # package.json#packageManager, so the Berry cache folder is detected.
+      #
+      # `npm install -g corepack` runs against the runner's default Node, not
+      # the version selected below, and keeps this working if that default ever
+      # moves to Node 25+, which no longer bundles corepack.
       - name: Enable corepack
         run: npm install -g corepack && corepack enable
 
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
           cache: yarn
+          # Only the root lockfile: CI installs the root workspace (which
+          # includes frontend/) but never electron/. Pinning the path keeps
+          # electron/yarn.lock churn from busting this cache key.
           cache-dependency-path: yarn.lock
 
       - name: Install dependencies
