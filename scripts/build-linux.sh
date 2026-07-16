@@ -37,9 +37,16 @@ echo "Copying resources to Electron app..."
 mkdir -p "$RESOURCES_PATH"
 cp -R ../backend/dist/suiteDFIR\ Backend "$RESOURCES_PATH/"
 
-# Copy iOS device binaries (Linux-specific)
-mkdir -p "$RESOURCES_PATH/bin"
-cp -R ../backend/bin/linux/* "$RESOURCES_PATH/bin/"
+# Copy iOS device binaries (Linux-specific, split by architecture).
+# Keep the linux/<arch>/ structure: get_binary_path() searches bin/linux/<arch>/<name>.
+HOST_ARCH="$(uname -m)"
+case "$HOST_ARCH" in
+    x86_64|amd64)  BIN_ARCH="x86_64" ;;
+    aarch64|arm64) BIN_ARCH="arm64" ;;
+    *) echo "ERROR: unsupported build architecture: $HOST_ARCH" >&2; exit 1 ;;
+esac
+mkdir -p "$RESOURCES_PATH/bin/linux/$BIN_ARCH"
+cp -R "../backend/bin/linux/$BIN_ARCH/." "$RESOURCES_PATH/bin/linux/$BIN_ARCH/"
 
 # Copy forensic tools
 mkdir -p "$RESOURCES_PATH/forensic-tools"
