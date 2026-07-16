@@ -46,8 +46,20 @@ nsis:
 
 linux:
   icon: build/icon.png
+  # Arch is intentionally not pinned here: scripts/build-linux.sh passes
+  # --x64/--arm64 explicitly based on the build host.
   target:
-    - target: AppImage
-      arch:
-        - x64
+    - AppImage
+    - deb
   category: Utility
+
+# deb is the preferred Linux install format because its postinst
+# (electron-builder default, verified against the built package) makes the
+# Chromium sandbox work on Ubuntu 24.04+: it installs an AppArmor profile
+# (/etc/apparmor.d/suitedfir-app) granting the app `userns`, so the namespace
+# sandbox is permitted; on systems without working user namespaces it falls
+# back to setuid chrome-sandbox (4755). The AppImage can do neither — FUSE
+# mounts are nosuid and no profile gets installed — so on stock Ubuntu 24.04
+# the AppImage cannot start with the sandbox enabled.
+deb:
+  maintainer: "Jacob Contreras <jacobecontreras@gmail.com>, DaKota LaFeber <forensics.dakota@gmail.com>"
