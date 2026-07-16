@@ -35,6 +35,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Must run before setup-node: the runner ships Yarn 1 globally, and
+      # setup-node's yarn cache detection shells out to `yarn --version` to
+      # locate the cache dir. Enabling corepack first makes that resolve to the
+      # version pinned in package.json#packageManager.
+      - name: Enable corepack
+        run: corepack enable
+
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -43,7 +50,7 @@ jobs:
           cache-dependency-path: yarn.lock
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Run frontend tests with coverage
         run: yarn --cwd frontend run test:coverage

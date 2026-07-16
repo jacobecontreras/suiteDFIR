@@ -81,9 +81,21 @@ This project is licensed under the **Apache License 2.0**. See the [LICENSE](./L
 ## Development
 
 ### Environment Setup
-1. **Node.js**: Ensure Node.js 18+ is installed.
-2. **Python**: Python 3.9+ is required for the backend forensic engines.
-3. **Virtual Environment**: Initialize the Python environment:
+1. **Node.js**: Ensure Node.js 18.12+ is installed (20+ recommended; CI runs 20).
+2. **Yarn**: This repo pins Yarn via the `packageManager` field in `package.json`
+   and expects [corepack](https://nodejs.org/api/corepack.html) to supply it:
+   ```bash
+   npm uninstall -g yarn   # remove any globally installed Yarn 1.x first
+   corepack enable         # ships with Node; makes `yarn` honor the pinned version
+   ```
+   Confirm you get the pinned version — **not** 1.22.x:
+   ```bash
+   yarn --version
+   ```
+   A globally npm-installed Yarn 1 ignores `packageManager` and will rewrite
+   `yarn.lock` into the incompatible v1 format. See *Yarn version* below.
+3. **Python**: Python 3.9+ is required for the backend forensic engines.
+4. **Virtual Environment**: Initialize the Python environment:
    ```bash
    cd backend
    python3 -m venv venv
@@ -96,6 +108,17 @@ Install all dependencies for root, frontend, and electron layers:
 ```bash
 yarn install:all
 ```
+
+### Yarn version
+The lockfiles are Yarn 4 (Berry) format — they start with `__metadata: version: 10`.
+Yarn 1 (Classic) writes a completely different `# yarn lockfile v1` format, so a
+contributor on the wrong major silently rewrites the entire lockfile on their
+first `yarn install`, producing an unreviewable diff and unresolvable conflicts.
+
+Corepack reads `packageManager` from the root `package.json` and cascades it to
+subdirectories, so `electron/` (which installs separately and has no
+`packageManager` field of its own) is covered by the same pin. To change the
+version, update that one field.
 
 ### Local Development
 Start the concurrent development environment (Vite + Electron):

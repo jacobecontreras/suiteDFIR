@@ -12,6 +12,11 @@
   "dependencies": {
     "electron-is-dev": "^2.0.0"
   },
+  "dependenciesMeta": {
+    "electron": {
+      "built": true
+    }
+  },
   "devDependencies": {
     "electron": "^40.0.0",
     "electron-builder": "^26.0.0"

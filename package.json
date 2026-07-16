@@ -4,6 +4,7 @@
     "description": "suiteDFIR - Digital Forensics and Incident Response Suite",
     "author": "suiteDFIR",
     "private": true,
+    "packageManager": "yarn@4.17.1",
     "scripts": {
         "dev": "cd frontend && yarn dev",
         "electron": "cd electron && yarn start",
