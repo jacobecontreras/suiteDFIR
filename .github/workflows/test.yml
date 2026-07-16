@@ -40,7 +40,7 @@ jobs:
       # locate the cache dir. Enabling corepack first makes that resolve to the
       # version pinned in package.json#packageManager.
       - name: Enable corepack
-        run: corepack enable
+        run: npm install -g corepack && corepack enable
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
