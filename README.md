@@ -83,10 +83,23 @@ This project is licensed under the **Apache License 2.0**. See the [LICENSE](./L
 ### Environment Setup
 1. **Node.js**: Ensure Node.js 18.12+ is installed (20+ recommended; CI runs 20).
 2. **Yarn**: This repo pins Yarn via the `packageManager` field in `package.json`
-   and expects [corepack](https://nodejs.org/api/corepack.html) to supply it:
+   and expects [corepack](https://github.com/nodejs/corepack) to supply it:
    ```bash
    npm uninstall -g yarn   # remove any globally installed Yarn 1.x first
-   corepack enable         # ships with Node; makes `yarn` honor the pinned version
+   corepack enable         # makes `yarn` honor the pinned version
+   ```
+   If `corepack` is not found, it is missing rather than broken. Two common causes:
+   - **Distro-packaged Node omits it.** Debian/Ubuntu strip corepack from their
+     `nodejs` package regardless of Node version (it fetches binaries at runtime,
+     which their policy disallows). Ubuntu 24.04's `nodejs 18.19.1+dfsg` has no
+     corepack even though upstream Node 18 bundles it. Install Node from
+     [NodeSource](https://github.com/nodesource/distributions) or `nvm` instead.
+   - **Node 25+ no longer bundles it** — the Node TSC voted to stop distributing
+     it. Node 24 and earlier still include it.
+
+   In either case:
+   ```bash
+   npm install -g corepack && corepack enable
    ```
    Confirm you get the pinned version — **not** 1.22.x:
    ```bash
