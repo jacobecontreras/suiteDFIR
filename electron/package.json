@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "suiteDFIR - Digital Forensics and Incident Response Suite",
   "author": "suiteDFIR",
+  "homepage": "https://github.com/jacobecontreras/suiteDFIR",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -11,6 +12,11 @@
   },
   "dependencies": {
     "electron-is-dev": "^2.0.0"
+  },
+  "dependenciesMeta": {
+    "electron": {
+      "built": true
+    }
   },
   "devDependencies": {
     "electron": "^40.0.0",

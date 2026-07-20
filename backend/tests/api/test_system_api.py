@@ -101,9 +101,16 @@ async def test_system_storage_scoped_to_case(client, fresh_db):
 
 async def test_browse_files_subprocess_is_mocked(client, fresh_db, monkeypatch):
     """The router runs system_manager.open_file_dialog → subprocess.run.
-    We patch the executor function to avoid touching the real OS."""
-    import subprocess
+
+    platform.system() and shutil.which are pinned so the result depends on
+    neither the host OS nor whether zenity is installed. The Linux branch
+    returns early ("zenity is required...") without reaching subprocess.run
+    when zenity is absent — true on CI runners, false on most dev machines.
+    """
     from services import system_manager as sm
+
+    monkeypatch.setattr(sm.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(sm.shutil, "which", lambda cmd: "/usr/bin/zenity")
 
     fake_completed = SimpleNamespace(returncode=1, stdout="", stderr="")
     monkeypatch.setattr(sm.subprocess, "run", lambda *a, **kw: fake_completed)
@@ -112,11 +119,14 @@ async def test_browse_files_subprocess_is_mocked(client, fresh_db, monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["success"] is False
-    assert "cancelled" in body["message"].lower() or "not supported" in body["message"].lower()
+    assert "cancelled" in body["message"].lower()
 
 
 async def test_browse_folders_subprocess_is_mocked(client, fresh_db, monkeypatch):
     from services import system_manager as sm
+
+    monkeypatch.setattr(sm.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(sm.shutil, "which", lambda cmd: "/usr/bin/zenity")
 
     fake_completed = SimpleNamespace(returncode=0, stdout="/some/folder\n", stderr="")
     monkeypatch.setattr(sm.subprocess, "run", lambda *a, **kw: fake_completed)
@@ -124,11 +134,8 @@ async def test_browse_folders_subprocess_is_mocked(client, fresh_db, monkeypatch
     resp = await client.post("/api/browse-folders")
     assert resp.status_code == 200
     body = resp.json()
-    # On supported platforms (Darwin/Linux/Windows) we should get a path back.
-    # On unsupported platforms the manager returns a "not supported" message
-    # without ever calling subprocess.run.
-    assert isinstance(body["success"], bool)
-    assert isinstance(body["message"], str)
+    assert body["success"] is True
+    assert body["file_path"] == "/some/folder"
 
 
 # GET /api/spatial/kml-files

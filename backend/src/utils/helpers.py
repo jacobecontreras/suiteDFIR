@@ -78,27 +78,35 @@ def handle_open_path_request(path: str, allowed_dir: str, resource_name: str = "
     return {"message": result["message"]}
 
 def get_binary_path(binary_name):
-    """Resolve path to a binary, handling Dev (source) and Prod (frozen) modes."""
-    
+    """Resolve the absolute path to a bundled helper binary.
+
+    Handles Dev (source) and Prod (frozen) modes. On Linux the binaries are
+    split by CPU architecture (bin/linux/{x86_64,arm64}).
+
+    Raises FileNotFoundError if the binary is not in the bundle — never
+    returns a bare name, so subprocess can never fall back to $PATH.
+    Callers already treat this as a subprocess failure: a bare name that is
+    missing from $PATH raises the same exception from subprocess itself.
+    """
     # Potential locations for the 'bin' folder
     possible_paths = []
 
     if getattr(sys, 'frozen', False):
         # --- PRODUCTION (PyInstaller/Electron) ---
         base_dir = os.path.dirname(sys.executable)
-        
+
         # 1. Standard PyInstaller: inside the one-file temp dir or next to executable
         if hasattr(sys, '_MEIPASS'):
             possible_paths.append(os.path.join(sys._MEIPASS, 'bin'))
-        
+
         possible_paths.append(os.path.join(base_dir, 'bin'))
-        
+
         # 2. Electron Structure: The backend is in "suiteDFIR Backend", bin is up one level in "Resources"
         # contents/Resources/suiteDFIR Backend/suitedfir-backend (executable)
         # contents/Resources/bin
         possible_paths.append(os.path.join(base_dir, '..', 'bin'))
         possible_paths.append(os.path.join(base_dir, '..', '..', 'bin')) # Just in case extra nesting
-        
+
     else:
         # --- DEVELOPMENT ---
         # backend/src/utils/helpers.py -> backend/bin
@@ -109,7 +117,15 @@ def get_binary_path(binary_name):
     # Determine platform-specific subfolder
     system = platform.system().lower()
     if system == "linux":
-        subfolder = "linux"
+        machine = platform.machine().lower()
+        if machine in ("x86_64", "amd64"):
+            subfolder = os.path.join("linux", "x86_64")
+        elif machine in ("aarch64", "arm64"):
+            subfolder = os.path.join("linux", "arm64")
+        else:
+            error_msg = f"No bundled binaries for Linux architecture {platform.machine()!r}"
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
     elif system == "darwin":
         subfolder = "macos"
     elif system == "windows":
@@ -117,9 +133,9 @@ def get_binary_path(binary_name):
          if not binary_name.lower().endswith(".exe"):
              binary_name += ".exe"
     else:
-        # Windows not supported yet per requirements
-        logger.warning(f"Platform {system} not fully supported for bundled binaries")
-        return binary_name
+        error_msg = f"No bundled binaries for platform {system!r}"
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
 
     # Search
     for p in possible_paths:
@@ -131,31 +147,11 @@ def get_binary_path(binary_name):
                 return os.path.abspath(full_path)
             else:
                 logger.warning(f"Binary {binary_name} exists at {full_path} but is not executable")
-    
-    # Strict mode: Do NOT fallback to system PATH
-    error_msg = f"Binary {binary_name} not found in bundle for platform {system}. Checked paths: {possible_paths}"
+
+    # Strict mode: no fallback to system PATH.
+    error_msg = f"Binary {binary_name} not found in bundle for {system}/{platform.machine()}. Checked paths: {possible_paths}"
     logger.error(error_msg)
-    # Return binary_name anyway to let the caller fail naturally or catch the specific error if needed,
-    # but since we want NO system fallback, returning the bare name might accidentally trigger system path lookup
-    # in subprocess calls if not careful. However, standard behavior suggests returning absolute path or failing.
-    # Given "only rely on the binaries in /bin", returning the bare name is risky if it exists in system path.
-    # But usually subprocess logic expects a path. Let's return the bare name but log heavily,
-    # or raise an exception? The original code returned binary_name.
-    # User said: "We want to only rely on the binaries in /bin."
-    # So if it's not there, it should probably fail.
-    # I will return None so it fails fast in caller, or just log error.
-    # To be safe and minimal changes, I'll return binary_name but the plan is to rely ONLY on bundled.
-    # Actually, returning binary_name triggers system PATH lookup in subprocess.
-    # I will Raise an exception or return a path that clearly fails if not found? 
-    # Let's simple return binary_name but log the error, effectively keeping 'some' behavior but compliance with "don't rely".
-    # Actually, to strictly follow "do not want ANY system fall back methods", I should NOT return binary_name if not found.
-    # But changing return type might break callers. 
-    # I will return binary_name but log a Critical error. 
-    # Wait, the user said "only rely on". If I return "idevice_id" and it's in /usr/bin, it works.
-    # I should likely make sure it fails if not in bundle.
-    # I'll stick to the plan: Remove explicit fallback logic.
-    return binary_name # subprocess will try to find it, but we warned. 
-    # Ideally should raise, but helpers.py structure suggests returning string.
+    raise FileNotFoundError(error_msg)
 
 def get_subprocess_startupinfo():
     """

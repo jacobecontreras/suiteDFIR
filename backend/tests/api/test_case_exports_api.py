@@ -41,7 +41,18 @@ async def test_create_export_missing_case_404(client, fresh_db):
     assert resp.status_code == 404
 
 
-async def test_create_export_409_when_active_exists(client, fresh_db):
+async def test_create_export_409_when_active_exists(client, fresh_db, monkeypatch):
+    """The 409 guard only holds while job 1 is pending/processing. On an empty
+    case the real background task fails the job almost immediately, so whether
+    the second POST sees an active job is an event-loop scheduling race. Stub
+    out processing to pin job 1 in 'pending' and make the guard deterministic."""
+    from services.export_manager import export_manager
+
+    async def _never_process(job_id):
+        return None
+
+    monkeypatch.setattr(export_manager, "start_export_processing", _never_process)
+
     case_id = await _insert_case()
     r1 = await client.post(f"/api/cases/{case_id}/export")
     assert r1.status_code == 200

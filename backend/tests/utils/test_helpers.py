@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import platform
 
 import pytest
@@ -183,3 +184,51 @@ class TestGetSubprocessStartupinfo:
         info = get_subprocess_startupinfo()
         assert isinstance(info, FakeStartup)
         assert info.dwFlags & 1  # STARTF_USESHOWWINDOW set
+
+
+# ---------------------------------------------------------------------------
+# get_binary_path
+# ---------------------------------------------------------------------------
+
+class TestGetBinaryPath:
+    """Resolution against the real repo bin/ tree (both Linux arch dirs are
+    checked in), with platform/machine pinned so results don't depend on the
+    host running the tests."""
+
+    BINARIES = ["adb", "idevice_id", "ideviceinfo", "idevicepair", "idevicebackup2"]
+
+    def test_linux_x86_64_layout(self, monkeypatch):
+        monkeypatch.setattr(helpers.platform, "system", lambda: "Linux")
+        monkeypatch.setattr(helpers.platform, "machine", lambda: "x86_64")
+        for name in self.BINARIES:
+            path = helpers.get_binary_path(name)
+            assert path.endswith(f"bin/linux/x86_64/{name}".replace("/", os.sep))
+
+    def test_linux_arm64_layout(self, monkeypatch):
+        monkeypatch.setattr(helpers.platform, "system", lambda: "Linux")
+        monkeypatch.setattr(helpers.platform, "machine", lambda: "aarch64")
+        for name in self.BINARIES:
+            path = helpers.get_binary_path(name)
+            assert path.endswith(f"bin/linux/arm64/{name}".replace("/", os.sep))
+
+    def test_linux_amd64_alias_maps_to_x86_64(self, monkeypatch):
+        monkeypatch.setattr(helpers.platform, "system", lambda: "Linux")
+        monkeypatch.setattr(helpers.platform, "machine", lambda: "amd64")
+        assert "x86_64" in helpers.get_binary_path("idevice_id")
+
+    def test_missing_binary_raises_not_bare_name(self, monkeypatch):
+        monkeypatch.setattr(helpers.platform, "system", lambda: "Linux")
+        monkeypatch.setattr(helpers.platform, "machine", lambda: "x86_64")
+        with pytest.raises(FileNotFoundError):
+            helpers.get_binary_path("definitely_not_a_bundled_tool")
+
+    def test_unknown_linux_arch_raises(self, monkeypatch):
+        monkeypatch.setattr(helpers.platform, "system", lambda: "Linux")
+        monkeypatch.setattr(helpers.platform, "machine", lambda: "riscv64")
+        with pytest.raises(FileNotFoundError):
+            helpers.get_binary_path("idevice_id")
+
+    def test_unsupported_platform_raises(self, monkeypatch):
+        monkeypatch.setattr(helpers.platform, "system", lambda: "FreeBSD")
+        with pytest.raises(FileNotFoundError):
+            helpers.get_binary_path("idevice_id")
